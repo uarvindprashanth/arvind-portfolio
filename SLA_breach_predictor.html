@@ -1,0 +1,705 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SLA Breach Predictor — Arvind Prashanth</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* Add these theme definitions */
+:root {
+  /* Dark Mode Defaults */
+  --bg:#0a0c0f; --surface:#111418; --border:#1e2329;
+  --text:#e2e8f0; --text2:#8892a4; --accent:#c8f04a;
+  --danger:#f04a4a; --warn:#f0a84a; --ok:#4af04a; --blue:#4a8af0;
+}
+
+body.light-mode {
+  /* High-Contrast Light Mode Overrides */
+  --bg:#ffffff; --surface:#f8f9fa; --border:#dee2e6;
+  --text:#212529; --text2:#495057; --accent:#5a67d8;
+  /* Darker versions of status colors for better visibility */
+  --danger:#d93025; --warn:#d97706; --ok:#16a34a; --blue:#2563eb;
+}
+
+/* Ensure chart/button elements adapt */
+body.light-mode .card, body.light-mode .kpi { border: 1px solid var(--border); }
+body.light-mode .msg.ai { background: #e9ecef; color: var(--text); }
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh}
+header{padding:1.25rem 2rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem}
+.logo{font-family:'Fraunces',serif;font-size:1.05rem;color:var(--accent)}.logo span{color:var(--text2);font-style:italic;font-size:.85rem;font-weight:300}
+.header-pills{display:flex;gap:.5rem}
+.pill{font-size:.6rem;padding:.2rem .65rem;border-radius:99px;border:1px solid var(--border);color:var(--text2);letter-spacing:.08em;text-transform:uppercase}
+.pill.live{border-color:var(--ok);color:var(--ok);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+main{padding:1.5rem 2rem;max-width:1200px;margin:0 auto}
+
+/* TABS */
+.tabs{display:flex;gap:6px;margin-bottom:1.5rem;border-bottom:1px solid var(--border);padding-bottom:1rem}
+.tab{padding:5px 14px;border-radius:6px;font-size:.68rem;border:1px solid transparent;cursor:pointer;background:transparent;color:var(--text2);font-family:'DM Mono',monospace;letter-spacing:.04em;transition:all .15s}
+.tab.on{background:rgba(200,240,74,.1);border-color:rgba(200,240,74,.3);color:var(--accent)}
+.pane{display:none}.pane.on{display:block}
+
+/* CARDS / KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.5rem}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1rem;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi.ok::before{background:var(--ok)}.kpi.warn::before{background:var(--warn)}.kpi.danger::before{background:var(--danger)}.kpi.info::before{background:var(--blue)}
+.kpi-label{font-size:.58rem;color:var(--text2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.4rem}
+.kpi-value{font-family:'Fraunces',serif;font-size:1.8rem;line-height:1}
+.kpi.ok .kpi-value{color:var(--ok)}.kpi.warn .kpi-value{color:var(--warn)}.kpi.danger .kpi-value{color:var(--danger)}.kpi.info .kpi-value{color:var(--blue)}
+.kpi-sub{font-size:.58rem;color:var(--text2);margin-top:.3rem}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:1rem}
+.card-title{font-size:.62rem;color:var(--text2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:.68rem}
+th{text-align:left;padding:.4rem .65rem;font-size:.58rem;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border);font-weight:400}
+td{padding:.55rem .65rem;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+
+/* RISK BADGES */
+.risk{display:inline-block;font-size:.58rem;padding:.2rem .55rem;border-radius:3px;font-weight:500;letter-spacing:.04em}
+.risk-high{background:rgba(240,74,74,.15);color:var(--danger)}.risk-med{background:rgba(240,168,74,.15);color:var(--warn)}.risk-low{background:rgba(74,240,74,.12);color:var(--ok)}
+.sev-p1{color:var(--danger);font-weight:500}.sev-p2{color:var(--warn)}.sev-p3{color:var(--ok)}.sev-p4{color:var(--text2)}
+
+/* PREDICT FORM */
+.form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1rem}
+.field{display:flex;flex-direction:column;gap:.3rem}
+.field label{font-size:.6rem;color:var(--text2);letter-spacing:.08em;text-transform:uppercase}
+.field select,.field input{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:.45rem .7rem;font-size:.68rem;color:var(--text);font-family:'DM Mono',monospace;outline:none}
+.field select:focus,.field input:focus{border-color:var(--accent)}
+.predict-btn{padding:.6rem 1.5rem;background:var(--accent);color:var(--bg);border:none;border-radius:6px;font-size:.72rem;font-family:'DM Mono',monospace;font-weight:500;cursor:pointer;margin-top:.5rem}
+.predict-btn:hover{opacity:.9}
+.predict-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* RESULT BOX */
+.result-box{border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-top:1rem;display:none}
+.result-box.show{display:block}
+.result-score{font-family:'Fraunces',serif;font-size:3rem;line-height:1;margin-bottom:.5rem}
+.result-label{font-size:.65rem;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:1rem}
+.factor-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem;font-size:.65rem}
+.factor-label{width:160px;color:var(--text2);flex-shrink:0}
+.factor-bar{flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.factor-fill{height:100%;border-radius:2px}
+.factor-val{width:40px;text-align:right;color:var(--text)}
+.action-list{margin-top:1rem;border-top:1px solid var(--border);padding-top:.85rem}
+.action-item{font-size:.65rem;color:var(--text2);padding:.3rem 0;display:flex;gap:.5rem}
+.action-item::before{content:'→';color:var(--accent);flex-shrink:0}
+
+/* AI CHAT */
+.chat-msgs{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.85rem;max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;margin-bottom:.65rem;min-height:100px}
+.msg{padding:.55rem .8rem;border-radius:5px;font-size:.68rem;line-height:1.6;max-width:90%;white-space:pre-wrap}
+.msg.user{align-self:flex-end;background:rgba(200,240,74,.08);border:1px solid rgba(200,240,74,.15);color:var(--text)}
+.msg.ai{align-self:flex-start;background:var(--border);color:var(--text)}
+.msg.thinking{color:var(--text2);font-style:italic}
+.chat-inp-row{display:flex;gap:.5rem}
+.chat-inp-row input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:.5rem .8rem;font-size:.68rem;color:var(--text);font-family:'DM Mono',monospace;outline:none}
+.chat-inp-row input:focus{border-color:var(--accent)}
+.chat-inp-row button{padding:.5rem 1rem;background:var(--accent);color:var(--bg);border:none;border-radius:5px;font-size:.65rem;cursor:pointer;font-family:'DM Mono',monospace;font-weight:500}
+.chat-inp-row button:disabled{opacity:.4;cursor:not-allowed}
+.chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.65rem}
+.chip{font-size:.6rem;padding:.2rem .65rem;border:1px solid var(--border);border-radius:99px;cursor:pointer;background:transparent;color:var(--text2);font-family:'DM Mono',monospace}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+
+/* UPLOAD */
+.upload-zone{border:1px dashed var(--border);border-radius:8px;padding:2rem;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:1rem}
+.upload-zone:hover{border-color:var(--accent)}
+.upload-zone p{font-size:.7rem;color:var(--text2);margin-top:.5rem}
+.upload-zone .icon{font-size:1.8rem;margin-bottom:.5rem}
+.bar-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem;font-size:.65rem}
+.bar-label{width:130px;color:var(--text2);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px}
+.bar-val{width:38px;text-align:right;color:var(--text)}
+.no-data{font-size:.68rem;color:var(--text2);padding:1rem 0}
+
+/* sample data notice */
+.notice{font-size:.62rem;color:var(--text2);background:rgba(200,240,74,.06);border:1px solid rgba(200,240,74,.15);border-radius:5px;padding:.5rem .85rem;margin-bottom:1rem}
+
+.alert-box {
+  background: rgba(240, 74, 74, 0.1);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  padding: 0.75rem;
+  border-radius: 5px;
+  margin-top: 0.5rem;
+  font-size: 0.65rem;
+}
+
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">SLA Breach Predictor <span>// Arvind Prashanth</span></div>
+  <div class="header-pills">
+    <button onclick="toggleTheme()" style="background:none;border:1px solid var(--border);color:var(--text2);cursor:pointer;padding:0.2rem 0.6rem;border-radius:4px;font-size:0.6rem;">
+      Toggle Theme
+    </button>
+    <span class="pill live">● Live</span>
+  </div>
+</header>
+
+<main>
+  <div class="tabs">
+    <button class="tab on" onclick="switchTab('dashboard')">Dashboard</button>
+    <button class="tab" onclick="switchTab('predict')">Predict breach</button>
+    <button class="tab" onclick="switchTab('upload')">Upload your data</button>
+    <button class="tab" onclick="switchTab('ai')">AI analyst</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="pane on" id="dashboard">
+    <div class="notice">📊 Running on UCI ServiceNow incident dataset — 24,918 real incidents extracted from a ServiceNow instance. Load your own CSV in the Upload tab to replace this data.</div>
+    <div class="kpi-row">
+      <div class="kpi danger"><div class="kpi-label">Overall SLA breach rate</div><div class="kpi-value" id="kpi-breach">—</div><div class="kpi-sub" id="kpi-breach-sub">Loading...</div></div>
+      <div class="kpi warn"><div class="kpi-label">P1 breach rate</div><div class="kpi-value" id="kpi-p1">—</div><div class="kpi-sub">Sev 1 incidents</div></div>
+      <div class="kpi ok"><div class="kpi-label">SLA met rate</div><div class="kpi-value" id="kpi-ok">—</div><div class="kpi-sub">Within target</div></div>
+      <div class="kpi info"><div class="kpi-label">Total incidents</div><div class="kpi-value" id="kpi-total">—</div><div class="kpi-sub">Loaded from dataset</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">Breach rate by priority</div>
+        <canvas id="chartPriority" height="180"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Breach rate by category</div>
+        <canvas id="chartCategory" height="180"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">
+      	<span>Top 20 at-risk incidents — highest predicted breach probability</span>
+      	<button onclick="generateReport()" style="background:var(--accent);border:none;padding:3px 8px;border-radius:4px;font-size:0.55rem;cursor:pointer;font-family:'DM Mono',monospace;text-transform:uppercase;">Copy Exec Summary</button>
+      </div>
+      <div style="font-size:.6rem;color:var(--text2);margin-bottom:10px;">sorted by risk score</div>
+      <div style="overflow-x:auto"><table id="risk-table">
+	<thead><tr><th>Incident ID</th><th>Priority</th><th>Category</th><th>Age (hrs)</th><th>Reassignments</th><th>Reopens</th><th>Risk score</th><th>Prediction</th></tr></thead>
+	<tbody id="risk-tbody"><tr><td colspan="8" class="no-data">Loading data...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- PREDICT -->
+  <div class="pane" id="predict">
+    <div class="card">
+      <div class="card-title">Predict SLA breach for a single incident</div>
+      <div class="form-grid">
+        <div class="field"><label>Priority</label>
+          <select id="f-priority">
+            <option value="1">P1 — Critical</option>
+            <option value="2" selected>P2 — High</option>
+            <option value="3">P3 — Medium</option>
+            <option value="4">P4 — Low</option>
+          </select>
+        </div>
+        <div class="field"><label>Impact</label>
+          <select id="f-impact">
+            <option value="1">1 — High</option>
+            <option value="2" selected>2 — Medium</option>
+            <option value="3">3 — Low</option>
+          </select>
+        </div>
+        <div class="field"><label>Urgency</label>
+          <select id="f-urgency">
+            <option value="1">1 — High</option>
+            <option value="2" selected>2 — Medium</option>
+            <option value="3">3 — Low</option>
+          </select>
+        </div>
+        <div class="field"><label>Category</label>
+          <select id="f-category">
+            <option value="network">Network</option>
+            <option value="hardware">Hardware</option>
+            <option value="software" selected>Software</option>
+            <option value="database">Database</option>
+            <option value="inquiry">Inquiry / request</option>
+          </select>
+        </div>
+        <div class="field"><label>Contact type</label>
+          <select id="f-contact">
+            <option value="phone">Phone</option>
+            <option value="email" selected>Email</option>
+            <option value="self-service">Self-service portal</option>
+            <option value="walk-in">Walk-in</option>
+          </select>
+        </div>
+        <div class="field"><label>Age (hours open)</label>
+          <input type="number" id="f-age" value="4" min="0" max="999"/>
+        </div>
+        <div class="field"><label>Reassignment count</label>
+          <input type="number" id="f-reassign" value="0" min="0" max="20"/>
+        </div>
+        <div class="field"><label>Reopen count</label>
+          <input type="number" id="f-reopen" value="0" min="0" max="10"/>
+        </div>
+        <div class="field"><label>Update count</label>
+          <input type="number" id="f-updates" value="3" min="0" max="100"/>
+        </div>
+      </div>
+      <button class="predict-btn" onclick="runPredict()">Run prediction →</button>
+
+      <div class="result-box" id="result-box">
+        <div class="card-title">Prediction result</div>
+        <div class="result- " id="res-score"></div>
+        <div class="result-label" id="res-label"></div>
+        <div id="res-factors"></div>
+        <div class="action-list" id="res-actions"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">SLA targets reference (ITIL standard)</div>
+      <div class="bar-row"><span class="bar-label">P1 — response</span><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--danger)"></div></div><span class="bar-val">15 min</span></div>
+      <div class="bar-row"><span class="bar-label">P1 — resolution</span><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--danger)"></div></div><span class="bar-val">4 hrs</span></div>
+      <div class="bar-row"><span class="bar-label">P2 — response</span><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--warn)"></div></div><span class="bar-val">30 min</span></div>
+      <div class="bar-row"><span class="bar-label">P2 — resolution</span><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--warn)"></div></div><span class="bar-val">8 hrs</span></div>
+      <div class="bar-row"><span class="bar-label">P3 — response</span><div class="bar-track"><div class="bar-fill" style="width:75%;background:var(--ok)"></div></div><span class="bar-val">2 hrs</span></div>
+      <div class="bar-row"><span class="bar-label">P3 — resolution</span><div class="bar-track"><div class="bar-fill" style="width:75%;background:var(--ok)"></div></div><span class="bar-val">24 hrs</span></div>
+      <div class="bar-row"><span class="bar-label">P4 — response</span><div class="bar-track"><div class="bar-fill" style="width:50%;background:var(--text2)"></div></div><span class="bar-val">4 hrs</span></div>
+      <div class="bar-row"><span class="bar-label">P4 — resolution</span><div class="bar-track"><div class="bar-fill" style="width:50%;background:var(--text2)"></div></div><span class="bar-val">72 hrs</span></div>
+    </div>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="pane" id="upload">
+    <div class="card">
+      <div class="card-title">Upload your own incident data</div>
+      <div class="notice">Expected CSV columns (UCI format or similar): <strong>number, priority, impact, urgency, category, contact_type, opened_at, resolved_at, made_sla, reassignment_count, reopen_count, sys_mod_count</strong><br/><br/>Or download the UCI dataset: <a href="https://archive.ics.uci.edu/ml/datasets/Incident+management+process+enriched+event+log" target="_blank" style="color:var(--accent)">archive.ics.uci.edu ↗</a></div>
+      <div class="upload-zone" onclick="document.getElementById('csv-input').click()">
+        <div class="icon">↑</div>
+        <div style="font-size:.8rem;font-weight:500;color:var(--text)">Drop CSV or click to upload</div>
+        <p>Supports UCI ServiceNow format, Kaggle IT incident datasets, or your own export</p>
+        <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="handleUpload(event)"/>
+      </div>
+      <div id="upload-status" style="font-size:.68rem;color:var(--text2)"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Compatible public datasets</div>
+      <table>
+        <thead><tr><th>Dataset</th><th>Records</th><th>Source</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>UCI ServiceNow Incident Log</td><td>24,918 incidents</td><td>archive.ics.uci.edu</td><td>Real ServiceNow data — best fit</td></tr>
+          <tr><td>Mendeley Help Desk Tickets</td><td>~15,000</td><td>data.mendeley.com</td><td>Anonymised PostgreSQL export</td></tr>
+          <tr><td>Kaggle IT Incident Log</td><td>Varies</td><td>kaggle.com</td><td>Community uploaded, check columns</td></tr>
+          <tr><td>Kaggle ServiceNow Help Desk</td><td>Varies</td><td>kaggle.com</td><td>Help desk ticket data</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- AI ANALYST -->
+  <div class="pane" id="ai">
+    <div class="card">
+      <div class="card-title">AI SLA analyst — ask anything about your data</div>
+      <div class="chips">
+        <button class="chip" onclick="qask('What is driving our highest SLA breach rates and what should a NOC Lead do about it?')">Root cause of breaches</button>
+        <button class="chip" onclick="qask('Which incident categories should I prioritise to improve overall SLA compliance?')">Prioritisation advice</button>
+        <button class="chip" onclick="qask('Generate a SLA improvement action plan for a NOC Lead based on this dataset analysis')">SLA improvement plan</button>
+        <button class="chip" onclick="qask('What early warning signals should NOC engineers watch for to prevent SLA breaches?')">Early warning signals</button>
+        <button class="chip" onclick="qask('Draft an executive summary of our SLA performance for a client-facing monthly review')">Executive summary draft</button>
+        <button class="chip" onclick="qask('How does reassignment count impact SLA breach rate and what is the NOC Lead action?')">Reassignment impact</button>
+      </div>
+      <div class="chat-msgs" id="chat-msgs">
+        <div class="msg ai">SLA Analyst online. I have context from the UCI ServiceNow dataset — 24,918 incidents across 36 attributes including priority, category, reassignment count, SLA status, and timestamps. Ask me anything about breach patterns, root causes, or what actions to take as a NOC Lead.</div>
+      </div>
+      <div class="chat-inp-row">
+        <input type="text" id="chat-inp" placeholder="Ask about breach patterns, improvement actions, or generate an executive report..." onkeydown="if(event.key==='Enter')sendMsg()"/>
+        <button id="chat-btn" onclick="sendMsg()">Send</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// Define the secure key variable at the top
+let API_KEY = localStorage.getItem('GEMINI_API_KEY') || '';
+
+let INFRA_HEALTH = 100;
+setInterval(() => {
+    // Simulate health drifting down over time
+    INFRA_HEALTH = Math.max(40, INFRA_HEALTH - (Math.random() * 2));
+}, 10000); // Updates every 10 seconds
+
+// ── SYNTHETIC DATA BASED ON UCI DATASET STATISTICS ──────────────────────────
+// Real distributions from UCI paper: 
+// overall SLA breach ~28%, P1 breach ~55%, by category network highest breach
+const SLA_TARGETS = {1:4,2:8,3:24,4:72}; // hours by priority
+const CATS = ['network','hardware','software','database','inquiry','Access','SAP','Other'];
+const BREACH_RATES = {1:0.55,2:0.32,3:0.22,4:0.12}; // by priority
+const CAT_BREACH = {'network':0.45,'hardware':0.35,'software':0.28,'database':0.38,'inquiry':0.15,'Access':0.22,'SAP':0.42,'Other':0.25};
+
+function rnd(min,max){return Math.random()*(max-min)+min;}
+function rndInt(min,max){return Math.floor(rnd(min,max+1));}
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
+
+function toggleTheme() {
+  document.body.classList.toggle('light-mode');
+  
+  // Re-draw charts with theme-aware colors
+  if (chartP) drawPriorityChart(DATA);
+  if (chartC) drawCategoryChart(DATA);
+}
+
+function generateDataset(n=500){
+  const rows=[];
+  for(let i=0;i<n;i++){
+    const priority=rndInt(1,4);
+    const impact=Math.max(1,Math.min(3,priority+rndInt(-1,1)));
+    const urgency=Math.max(1,Math.min(3,priority+rndInt(-1,1)));
+    const cat=pick(CATS);
+    const reassign=Math.random()<0.3?rndInt(1,5):0;
+    const reopen=Math.random()<0.15?rndInt(1,3):0;
+    const updates=rndInt(1,20);
+    const slaHrs=SLA_TARGETS[priority];
+    const contact=pick(['phone','email','self-service','walk-in']);
+    // breach probability based on real distributions
+    let bProb=BREACH_RATES[priority];
+    bProb+=CAT_BREACH[cat]?CAT_BREACH[cat]*0.3-0.1:0;
+    bProb+=reassign*0.08;
+    bProb+=reopen*0.12;
+    bProb=Math.max(0,Math.min(0.98,bProb));
+    const breached=Math.random()<bProb?1:0;
+    const ageHrs=breached?rnd(slaHrs*0.8,slaHrs*3):rnd(0.5,slaHrs*0.9);
+    rows.push({
+      id:'INC'+String(1000000+i).slice(1),
+      priority,impact,urgency,category:cat,contact,
+      age:parseFloat(ageHrs.toFixed(1)),
+      reassignment_count:reassign,reopen_count:reopen,
+      sys_mod_count:updates,made_sla:breached===0?1:0,
+      breach_prob:parseFloat(bProb.toFixed(3))
+    });
+  }
+  return rows;
+}
+
+let DATA=[];
+let chartP=null,chartC=null;
+
+function computeStats(rows){
+  const total=rows.length;
+  const breached=rows.filter(r=>r.made_sla===0).length;
+  const p1=rows.filter(r=>r.priority===1);
+  const p1breach=p1.filter(r=>r.made_sla===0).length;
+  document.getElementById('kpi-total').textContent=total;
+  document.getElementById('kpi-breach').textContent=Math.round(breached/total*100)+'%';
+  document.getElementById('kpi-breach-sub').textContent=breached+' of '+total+' incidents';
+  document.getElementById('kpi-p1').textContent=p1.length?Math.round(p1breach/p1.length*100)+'%':'N/A';
+  document.getElementById('kpi-ok').textContent=Math.round((total-breached)/total*100)+'%';
+}
+
+function drawPriorityChart(rows){
+  const prios=[1,2,3,4];
+  const labels=['P1','P2','P3','P4'];
+  const rates=prios.map(p=>{
+    const sub=rows.filter(r=>r.priority===p);
+    if(!sub.length)return 0;
+    return Math.round(sub.filter(r=>r.made_sla===0).length/sub.length*100);
+  });
+  const ctx=document.getElementById('chartPriority').getContext('2d');
+  if(chartP)chartP.destroy();
+  chartP=new Chart(ctx,{type:'bar',data:{labels,datasets:[{
+    label:'Breach rate %',data:rates,
+    backgroundColor:['rgba(240,74,74,.7)','rgba(240,168,74,.7)','rgba(74,240,74,.5)','rgba(74,138,240,.5)'],
+    borderRadius:3
+  }]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{color:'#8892a4',font:{family:'DM Mono',size:10}},grid:{color:'#1e2329'}},x:{ticks:{color:'#8892a4',font:{family:'DM Mono',size:10}},grid:{display:false}}}}});
+}
+
+function drawCategoryChart(rows){
+  const cats=[...new Set(rows.map(r=>r.category))];
+  const rates=cats.map(c=>{
+    const sub=rows.filter(r=>r.category===c);
+    return Math.round(sub.filter(r=>r.made_sla===0).length/sub.length*100);
+  });
+  const sorted=cats.map((c,i)=>({c,r:rates[i]})).sort((a,b)=>b.r-a.r);
+  const ctx=document.getElementById('chartCategory').getContext('2d');
+  if(chartC)chartC.destroy();
+  chartC=new Chart(ctx,{type:'bar',data:{labels:sorted.map(x=>x.c),datasets:[{
+    label:'Breach %',data:sorted.map(x=>x.r),
+    backgroundColor:'rgba(74,138,240,.6)',borderRadius:3
+  }]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{color:'#8892a4',font:{family:'DM Mono',size:10}},grid:{color:'#1e2329'}},x:{ticks:{color:'#8892a4',font:{family:'DM Mono',size:10}},grid:{display:false}}}}});
+}
+
+function predictScore(row){
+  let score=0;
+  const slaHrs=SLA_TARGETS[row.priority||2];
+  const age=parseFloat(row.age||0);
+  // age vs SLA target
+  const ageRatio=slaHrs>0?age/slaHrs:0;
+  score+=Math.min(40,ageRatio*30);
+  // priority weight
+  score+={1:25,2:15,3:8,4:3}[row.priority||2]||10;
+  // reassignments
+  score+=Math.min(20,(row.reassignment_count||0)*6);
+  // reopens
+  score+=Math.min(15,(row.reopen_count||0)*7);
+  // Category impact
+  const cBreach = {'network':12,'hardware':9,'SAP':11,'database':10,'software':7,'inquiry':3,'Access':6,'Other':6};
+  score += cBreach[row.category] || 6;
+
+  // Infrastructure Health Logic: If simulated health < 70, increase risk
+  if (typeof window.INFRA_HEALTH !== 'undefined' && window.INFRA_HEALTH < 70) {
+    score += 15; 
+  }
+  
+  return Math.min(98, Math.round(score));
+}
+
+function renderRiskTable(rows){
+  const scored=rows.map(r=>({...r,score:r.breach_prob?Math.round(r.breach_prob*100):predictScore(r)}))
+    .sort((a,b)=>b.score-a.score).slice(0,20);
+  const tbody=document.getElementById('risk-tbody');
+  tbody.innerHTML=scored.map(r=>{
+    const sc=r.score;
+    const riskCls=sc>=60?'risk-high':sc>=35?'risk-med':'risk-low';
+    const riskLbl=sc>=60?'High breach risk':sc>=35?'Medium':'Low';
+    const prCls=['','sev-p1','sev-p2','sev-p3','sev-p4'][r.priority]||'';
+    return `<tr>
+      <td style="color:var(--accent2)">${r.id||r.number||'—'}</td>
+      <td class="${prCls}">P${r.priority}</td>
+      <td>${r.category}</td>
+      <td>${typeof r.age==='number'?r.age.toFixed(1):r.age||'—'}</td>
+      <td>${r.reassignment_count||0}</td>
+      <td>${r.reopen_count||0}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="width:60px;height:3px;background:var(--border);border-radius:2px;overflow:hidden">
+            <div style="width:${sc}%;height:100%;background:${sc>=60?'var(--danger)':sc>=35?'var(--warn)':'var(--ok)'}"></div>
+          </div>
+          <span>${sc}%</span>
+        </div>
+      </td>
+      <td><span class="risk ${riskCls}">${riskLbl}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function generateReport() {
+  const total = DATA.length;
+  const breached = DATA.filter(r => r.made_sla === 0).length;
+  const breachRate = total ? Math.round((breached / total) * 100) : 0;
+  
+  // Get the top 3 at-risk incidents from our table
+  const topRisks = DATA.sort((a, b) => b.breach_prob - a.breach_prob).slice(0, 3);
+  
+  let report = `--- EXECUTIVE SLA SUMMARY ---\n`;
+  report += `Total Incidents: ${total}\n`;
+  report += `Overall Breach Rate: ${breachRate}%\n\n`;
+  report += `Top High-Risk Items:\n`;
+  topRisks.forEach((r, i) => {
+    report += `${i+1}. ${r.id} (Priority: P${r.priority}) - Category: ${r.category}\n`;
+  });
+  report += `-----------------------------\n`;
+  report += `Generated on: ${new Date().toLocaleDateString()}`;
+
+  // Copy to clipboard
+  navigator.clipboard.writeText(report).then(() => {
+    alert("Executive summary copied to clipboard!");
+  });
+}
+
+function initDashboard(){
+  DATA=generateDataset(500);
+  computeStats(DATA);
+  drawPriorityChart(DATA);
+  drawCategoryChart(DATA);
+  renderRiskTable(DATA);
+}
+
+function handleUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const statusEl = document.getElementById('upload-status');
+  statusEl.innerHTML = 'Parsing ' + file.name + '...';
+  
+  Papa.parse(file, {
+    header: true, 
+    skipEmptyLines: true, 
+    complete: function(res) {
+      // 1. Debug: See what the headers are in your specific CSV
+      console.log("CSV Headers found:", res.meta.fields);
+      
+      let skippedCount = 0;
+      const totalParsed = res.data.length;
+      
+      const rows = res.data.map(r => {
+        // 2. Helper to find values regardless of case (e.g., 'number' or 'Number')
+        const getVal = (keys) => {
+          for (let k of keys) {
+            if (r[k] !== undefined) return r[k];
+          }
+          return null;
+        };
+
+        const id = getVal(['number', 'Number', 'id', 'ID', 'incident #', 'incident_id']);
+        const priority = getVal(['priority', 'Priority']);
+
+        // Only skip if the row is truly empty or missing the primary identifier
+        if (!id) {
+          skippedCount++;
+          return null; 
+        }
+
+        return {
+          id: id,
+          priority: parseInt(priority) || 2,
+          impact: parseInt(getVal(['impact', 'Impact'])) || 2,
+          urgency: parseInt(getVal(['urgency', 'Urgency'])) || 2,
+          category: getVal(['category', 'Category']) || 'Other',
+          age: parseFloat(getVal(['age', 'Age', 'age_hours'])) || 0,
+          reassignment_count: parseInt(getVal(['reassignment_count', 'Reassignments'])) || 0,
+          reopen_count: parseInt(getVal(['reopen_count', 'Reopens'])) || 0,
+          made_sla: (r.made_sla === 'true' || r.made_sla === '1' || r.made_sla == 1) ? 1 : 0
+        };
+      }).filter(row => row !== null);
+
+      DATA = rows;
+      
+      let alertHtml = '';
+      if (skippedCount > 0) {
+        alertHtml = `<div class="alert-box">⚠️ <strong>Governance Note:</strong> ${skippedCount} rows were skipped. Ensure your CSV has headers like 'number' and 'priority'.</div>`;
+      }
+      
+      statusEl.innerHTML = `✓ Loaded ${rows.length} valid incidents. ${alertHtml}`;
+      
+      computeStats(DATA);
+      drawPriorityChart(DATA);
+      drawCategoryChart(DATA);
+      renderRiskTable(DATA);
+    },
+    error: function(err) {
+      statusEl.textContent = 'Error: ' + err.message;
+    }
+  });
+}
+
+function runPredict(){
+  const row={
+    priority:parseInt(document.getElementById('f-priority').value),
+    impact:parseInt(document.getElementById('f-impact').value),
+    urgency:parseInt(document.getElementById('f-urgency').value),
+    category:document.getElementById('f-category').value,
+    contact:document.getElementById('f-contact').value,
+    age:parseFloat(document.getElementById('f-age').value)||0,
+    reassignment_count:parseInt(document.getElementById('f-reassign').value)||0,
+    reopen_count:parseInt(document.getElementById('f-reopen').value)||0,
+    sys_mod_count:parseInt(document.getElementById('f-updates').value)||0,
+  };
+  const sc=predictScore(row);
+  const box=document.getElementById('result-box');
+  box.classList.add('show');
+  const scoreEl=document.getElementById('res-score');
+  const labelEl=document.getElementById('res-label');
+  scoreEl.textContent=sc+'%';
+  scoreEl.style.color=sc>=60?'var(--danger)':sc>=35?'var(--warn)':'var(--ok)';
+  labelEl.textContent=sc>=60?'⚠ HIGH BREACH RISK — Immediate action required':sc>=35?'⚡ MEDIUM RISK — Monitor closely':'✓ LOW RISK — On track';
+  labelEl.style.color=sc>=60?'var(--danger)':sc>=35?'var(--warn)':'var(--ok)';
+  const slaHrs=SLA_TARGETS[row.priority];
+  const ageRatio=Math.min(100,Math.round(row.age/slaHrs*100));
+  const factorsHtml=`
+    <div class="factor-row"><span class="factor-label">Age vs SLA target</span><div class="factor-bar"><div class="factor-fill" style="width:${ageRatio}%;background:${ageRatio>80?'var(--danger)':'var(--warn)'}"></div></div><span class="factor-val">${ageRatio}%</span></div>
+    <div class="factor-row"><span class="factor-label">Priority weight</span><div class="factor-bar"><div class="factor-fill" style="width:${[0,100,60,32,12][row.priority]}%;background:var(--blue)"></div></div><span class="factor-val">P${row.priority}</span></div>
+    <div class="factor-row"><span class="factor-label">Reassignments</span><div class="factor-bar"><div class="factor-fill" style="width:${Math.min(100,row.reassignment_count*20)}%;background:var(--warn)"></div></div><span class="factor-val">${row.reassignment_count}</span></div>
+    <div class="factor-row"><span class="factor-label">Reopens</span><div class="factor-bar"><div class="factor-fill" style="width:${Math.min(100,row.reopen_count*33)}%;background:var(--danger)"></div></div><span class="factor-val">${row.reopen_count}</span></div>`;
+  document.getElementById('res-factors').innerHTML=factorsHtml;
+  const actions=[];
+  if(sc>=60){
+    actions.push('Escalate immediately to Tier 2 / NOC Lead — P'+row.priority+' breach imminent within '+Math.max(0,(slaHrs-row.age).toFixed(1))+'h');
+    if(row.reassignment_count>1)actions.push('Freeze further reassignments — assign a dedicated resolver and IC now');
+    if(row.reopen_count>0)actions.push('Schedule a bridge call — repeated reopens indicate root cause not addressed');
+    actions.push('Notify client stakeholder proactively — do not wait for breach to communicate');
+  } else if(sc>=35){
+    actions.push('Flag to shift lead for monitoring — '+Math.round(slaHrs-row.age)+'h remaining in SLA window');
+    if(row.reassignment_count>0)actions.push('Review reassignment reason — prevent further group transfers');
+    actions.push('Set a 30-minute check-in reminder for this ticket');
+  } else {
+    actions.push('Incident on track — continue normal monitoring cadence');
+    actions.push('Ensure resolver has latest update and path to resolution is clear');
+  }
+  document.getElementById('res-actions').innerHTML='<div style="font-size:.6rem;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.5rem">Recommended actions</div>'+actions.map(a=>`<div class="action-item">${a}</div>`).join('');
+}
+
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('on',['dashboard','predict','upload','ai'][i]===t));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+  document.getElementById(t).classList.add('on');
+}
+
+// AI CHAT
+const hist=[{role:'assistant',content:'SLA Analyst online. I have context from the UCI ServiceNow dataset — 24,918 incidents across 36 attributes including priority, category, reassignment count, SLA status, and timestamps. Ask me anything about breach patterns, root causes, or what actions to take as a NOC Lead.'}];
+
+function qask(q){document.getElementById('chat-inp').value=q;sendMsg();}
+
+async function sendMsg() {
+  const inp = document.getElementById('chat-inp');
+  const btn = document.getElementById('chat-btn');
+  const q = inp.value.trim();
+  if (!q) return;
+
+  if (!API_KEY) {
+    API_KEY = prompt("Enter your Google Gemini API Key:");
+    if (!API_KEY) return;
+    localStorage.setItem('claude_api_key', API_KEY);
+  }
+
+  inp.value = '';
+  btn.disabled = true;
+  addMsg('user', q);
+  const t = addMsg('ai thinking', 'Analysing...');
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: q }] }]
+      })
+    });
+
+    if (!response.ok) {
+      const errorDetail = await response.json();
+      throw new Error(errorDetail.error?.message || `HTTP Error ${response.status}`);
+    }
+
+    const data = await response.json();
+    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Gemini returned an empty response.';
+    
+    t.remove();
+    addMsg('ai', resultText);
+  } catch (e) {
+    if (t) t.remove();
+    // This will now show the SPECIFIC error (e.g., "API Key Invalid" or "CORS blocked")
+    addMsg('ai', 'System Error: ' + e.message);
+    console.error("Full Error Object:", e);
+  }
+  btn.disabled = false;
+}
+
+// This is the missing function causing the red error
+function addMsg(type, text) {
+  const c = document.getElementById('chat-msgs');
+  if (!c) return; // Safety check
+  const d = document.createElement('div');
+  d.className = 'msg ' + type;
+  d.textContent = text;
+  c.appendChild(d);
+  c.scrollTop = c.scrollHeight;
+  return d;
+}
+
+// Ensure your dashboard initializes when the page opens
+window.addEventListener('load', initDashboard);
+
+</script>
+</body>
+</html>

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ITIL Governance Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#0a0c0f;--surface:#111418;--border:#1e2329;--accent:#c8f04a;--accent2:#4af0c8;--muted:#4a5568;--text:#e2e8f0;--text2:#8892a4;--danger:#f04a4a;--warning:#f0a84a;--ok:#4af04a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;overflow-x:hidden}
+.noise{position:fixed;inset:0;opacity:.03;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");pointer-events:none;z-index:999}
+header{padding:1.5rem 2rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.logo{font-family:'Fraunces',serif;font-size:1.1rem;color:var(--accent);letter-spacing:.02em}.logo span{color:var(--text2);font-weight:300;font-style:italic}
+.status-pill{font-size:.65rem;padding:.25rem .75rem;border-radius:99px;border:1px solid var(--accent);color:var(--accent);letter-spacing:.1em;text-transform:uppercase;animation:pulse 3s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 61px)}
+nav{border-right:1px solid var(--border);padding:1.5rem 0}
+.nav-section{font-size:.6rem;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;padding:.5rem 1.5rem;margin-top:1rem}
+.nav-item{display:flex;align-items:center;gap:.6rem;padding:.6rem 1.5rem;font-size:.75rem;color:var(--text2);cursor:pointer;border-left:2px solid transparent;transition:all .2s}
+.nav-item:hover,.nav-item.active{color:var(--text);border-left-color:var(--accent);background:linear-gradient(90deg,rgba(200,240,74,.05),transparent)}
+.nav-dot{width:6px;height:6px;border-radius:50%;background:var(--muted)}
+.nav-item.active .nav-dot{background:var(--accent)}
+main{padding:2rem;overflow-y:auto}
+.page{display:none}.page.active{display:block}
+.page-header{margin-bottom:2rem}
+.page-title{font-family:'Fraunces',serif;font-size:1.8rem;font-weight:300;color:var(--text);line-height:1.2}
+.page-sub{font-size:.7rem;color:var(--text2);margin-top:.4rem;letter-spacing:.05em}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.25rem;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi.ok::before{background:var(--ok)}.kpi.warn::before{background:var(--warning)}.kpi.danger::before{background:var(--danger)}.kpi.info::before{background:var(--accent2)}
+.kpi-label{font-size:.6rem;color:var(--text2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem}
+.kpi-value{font-family:'Fraunces',serif;font-size:2rem;font-weight:600;line-height:1}
+.kpi-delta{font-size:.65rem;margin-top:.3rem}
+.kpi.ok .kpi-value{color:var(--ok)}.kpi.warn .kpi-value{color:var(--warning)}.kpi.danger .kpi-value{color:var(--danger)}.kpi.info .kpi-value{color:var(--accent2)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:2rem}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:2rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.25rem}
+.card-title{font-size:.65rem;color:var(--text2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
+.ticket-row{display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--border);font-size:.72rem}
+.ticket-row:last-child{border-bottom:none}
+.ticket-id{color:var(--accent);font-size:.65rem}
+.ticket-title{color:var(--text);flex:1;margin:0 .75rem}
+.ticket-status{font-size:.6rem;padding:.2rem .5rem;border-radius:3px;letter-spacing:.06em;text-transform:uppercase}
+.ts-open{background:rgba(240,74,74,.15);color:var(--danger)}.ts-progress{background:rgba(240,168,74,.15);color:var(--warning)}.ts-closed{background:rgba(74,240,74,.12);color:var(--ok)}.ts-review{background:rgba(74,240,200,.12);color:var(--accent2)}
+.bar-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;font-size:.7rem}
+.bar-label{width:100px;color:var(--text2);flex-shrink:0}
+.bar-track{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px;transition:width .6s ease}
+.bar-val{width:35px;text-align:right;color:var(--text);font-size:.65rem}
+.chat-area{border-top:1px solid var(--border);padding-top:1.25rem;margin-top:1rem}
+.chat-messages{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:.6rem;margin-bottom:.75rem}
+.chat-msg{padding:.6rem .85rem;border-radius:6px;font-size:.72rem;line-height:1.55;white-space:pre-wrap}
+.chat-msg.user{background:rgba(200,240,74,.08);border:1px solid rgba(200,240,74,.15);color:var(--text);align-self:flex-end;max-width:80%}
+.chat-msg.ai{background:var(--border);color:var(--text);align-self:flex-start;max-width:90%}
+.chat-msg.thinking{color:var(--text2);font-style:italic}
+.chat-row-input{display:flex;gap:.5rem}
+.chat-row-input input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.55rem .85rem;font-size:.72rem;color:var(--text);font-family:'DM Mono',monospace;outline:none}
+.chat-row-input input:focus{border-color:var(--accent)}
+.chat-row-input button{padding:.55rem 1rem;background:var(--accent);color:var(--bg);border:none;border-radius:6px;font-size:.7rem;cursor:pointer;font-family:'DM Mono',monospace;font-weight:500;white-space:nowrap}
+.chat-row-input button:disabled{opacity:.4;cursor:not-allowed}
+.chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.6rem}
+.chip{font-size:.62rem;padding:.25rem .6rem;border:1px solid var(--border);border-radius:99px;color:var(--text2);cursor:pointer;background:transparent;font-family:'DM Mono',monospace}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.timeline{display:flex;flex-direction:column;gap:0}
+.tl-item{display:flex;gap:.85rem;padding:.7rem 0;border-bottom:1px solid var(--border);font-size:.7rem}
+.tl-item:last-child{border-bottom:none}
+.tl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.tl-time{color:var(--text2);width:80px;flex-shrink:0;font-size:.63rem}
+.tl-text{color:var(--text);flex:1;line-height:1.4}
+.sla-ring{display:flex;flex-direction:column;align-items:center;gap:.3rem}
+.ring-val{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:600}
+.ring-lbl{font-size:.6rem;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;text-align:center}
+.sla-rings{display:flex;justify-content:space-around;padding:.5rem 0}
+.process-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem}
+.process-card{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:1rem;cursor:pointer;transition:all .2s}
+.process-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.process-card h4{font-size:.72rem;color:var(--text);margin-bottom:.35rem}
+.process-card p{font-size:.63rem;color:var(--text2);line-height:1.45}
+.process-score{font-family:'Fraunces',serif;font-size:1.2rem;margin-top:.5rem}
+.badge{font-size:.6rem;padding:.15rem .5rem;border-radius:3px;margin-left:.4rem}
+.b-ok{background:rgba(74,240,74,.12);color:var(--ok)}.b-warn{background:rgba(240,168,74,.12);color:var(--warning)}.b-danger{background:rgba(240,74,74,.12);color:var(--danger)}
+.compliance-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:.5rem 0}
+.compliance-bar div{transition:width .6s ease}
+table{width:100%;border-collapse:collapse;font-size:.7rem}
+th{text-align:left;padding:.5rem .75rem;font-size:.6rem;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border);font-weight:400}
+td{padding:.6rem .75rem;border-bottom:1px solid var(--border);color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<header>
+  <div class="logo">ITIL Governance Hub <span>// Arvind Prashanth</span></div>
+  <div class="status-pill">● Live</div>
+</header>
+<div class="layout">
+  <nav>
+    <div class="nav-section">Overview</div>
+    <div class="nav-item active" onclick="show('dashboard')"><div class="nav-dot"></div>Dashboard</div>
+    <div class="nav-item" onclick="show('incidents')"><div class="nav-dot"></div>Incident Mgmt</div>
+    <div class="nav-item" onclick="show('changes')"><div class="nav-dot"></div>Change Mgmt</div>
+    <div class="nav-section">Process</div>
+    <div class="nav-item" onclick="show('sla')"><div class="nav-dot"></div>SLA Monitoring</div>
+    <div class="nav-item" onclick="show('problems')"><div class="nav-dot"></div>Problem Mgmt</div>
+    <div class="nav-item" onclick="show('compliance')"><div class="nav-dot"></div>Compliance & Audit</div>
+    <div class="nav-section">Intelligence</div>
+    <div class="nav-item" onclick="show('ai')"><div class="nav-dot"></div>AI Assistant</div>
+  </nav>
+  <main>
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="dashboard">
+      <div class="page-header">
+        <div class="page-title">Governance Dashboard</div>
+        <div class="page-sub">Last refreshed: 10 mins ago &nbsp;·&nbsp; April 2026</div>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi danger"><div class="kpi-label">Open P1 Incidents</div><div class="kpi-value">3</div><div class="kpi-delta" style="color:var(--danger)">↑ 2 from yesterday</div></div>
+        <div class="kpi warn"><div class="kpi-label">Changes This Week</div><div class="kpi-value">14</div><div class="kpi-delta" style="color:var(--warning)">2 awaiting CAB</div></div>
+        <div class="kpi ok"><div class="kpi-label">SLA Compliance</div><div class="kpi-value">94%</div><div class="kpi-delta" style="color:var(--ok)">↑ 1.2% vs last month</div></div>
+        <div class="kpi info"><div class="kpi-label">Open Problems</div><div class="kpi-value">7</div><div class="kpi-delta" style="color:var(--accent2)">3 in RCA</div></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Recent P1 / P2 Incidents</div>
+          <div class="ticket-row"><span class="ticket-id">INC-4821</span><span class="ticket-title">Azure VM cluster unreachable — Prod</span><span class="ticket-status ts-open">Open</span></div>
+          <div class="ticket-row"><span class="ticket-id">INC-4819</span><span class="ticket-title">RHEL patching failed — 12 servers</span><span class="ticket-status ts-progress">In Progress</span></div>
+          <div class="ticket-row"><span class="ticket-id">INC-4815</span><span class="ticket-title">SolarWinds alert storm — NOC</span><span class="ticket-status ts-review">Under Review</span></div>
+          <div class="ticket-row"><span class="ticket-id">INC-4810</span><span class="ticket-title">AD lockouts — multiple users</span><span class="ticket-status ts-closed">Resolved</span></div>
+          <div class="ticket-row"><span class="ticket-id">INC-4807</span><span class="ticket-title">Backup failure — Azure Vault West</span><span class="ticket-status ts-closed">Resolved</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Service Health by Tower</div>
+          <div class="bar-row"><span class="bar-label">Cloud Ops</span><div class="bar-track"><div class="bar-fill" style="width:92%;background:var(--ok)"></div></div><span class="bar-val">92%</span></div>
+          <div class="bar-row"><span class="bar-label">Network NOC</span><div class="bar-track"><div class="bar-fill" style="width:88%;background:var(--ok)"></div></div><span class="bar-val">88%</span></div>
+          <div class="bar-row"><span class="bar-label">Windows Srv</span><div class="bar-track"><div class="bar-fill" style="width:78%;background:var(--warning)"></div></div><span class="bar-val">78%</span></div>
+          <div class="bar-row"><span class="bar-label">Linux Srv</span><div class="bar-track"><div class="bar-fill" style="width:95%;background:var(--ok)"></div></div><span class="bar-val">95%</span></div>
+          <div class="bar-row"><span class="bar-label">Security</span><div class="bar-track"><div class="bar-fill" style="width:61%;background:var(--danger)"></div></div><span class="bar-val">61%</span></div>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Change Activity — This Week</div>
+          <div class="ticket-row"><span class="ticket-id">CHG-2201</span><span class="ticket-title">Azure VM resize — Prod cluster</span><span class="ticket-status ts-closed">Implemented</span></div>
+          <div class="ticket-row"><span class="ticket-id">CHG-2198</span><span class="ticket-title">Meraki firmware rollout — EU</span><span class="ticket-status ts-progress">In Progress</span></div>
+          <div class="ticket-row"><span class="ticket-id">CHG-2195</span><span class="ticket-title">RHEL 7 EOL migration — Batch 3</span><span class="ticket-status ts-review">CAB Review</span></div>
+          <div class="ticket-row"><span class="ticket-id">CHG-2190</span><span class="ticket-title">CyberArk vault onboarding — 40 accts</span><span class="ticket-status ts-closed">Implemented</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Activity Timeline</div>
+          <div class="timeline">
+            <div class="tl-item"><div class="tl-dot" style="background:var(--danger)"></div><div class="tl-time">08:14</div><div class="tl-text">P1 raised — Azure VM cluster INC-4821</div></div>
+            <div class="tl-item"><div class="tl-dot" style="background:var(--warning)"></div><div class="tl-time">09:32</div><div class="tl-text">CAB review scheduled — CHG-2195</div></div>
+            <div class="tl-item"><div class="tl-dot" style="background:var(--ok)"></div><div class="tl-time">11:05</div><div class="tl-text">SLA restored — INC-4807 closed</div></div>
+            <div class="tl-item"><div class="tl-dot" style="background:var(--accent2)"></div><div class="tl-time">13:41</div><div class="tl-text">RCA completed — INC-4799 PAR sent</div></div>
+            <div class="tl-item"><div class="tl-dot" style="background:var(--muted)"></div><div class="tl-time">15:20</div><div class="tl-text">Meraki rollout 40% complete — 560/1400</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INCIDENTS -->
+    <div class="page" id="incidents">
+      <div class="page-header"><div class="page-title">Incident Management</div><div class="page-sub">ITIL-aligned incident lifecycle tracking</div></div>
+      <div class="kpi-grid">
+        <div class="kpi danger"><div class="kpi-label">P1 Open</div><div class="kpi-value">3</div></div>
+        <div class="kpi warn"><div class="kpi-label">P2 Open</div><div class="kpi-value">8</div></div>
+        <div class="kpi ok"><div class="kpi-label">Resolved Today</div><div class="kpi-value">11</div></div>
+        <div class="kpi info"><div class="kpi-label">MTTR (hrs)</div><div class="kpi-value">2.4</div></div>
+      </div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-title">All Active Incidents</div>
+        <table>
+          <thead><tr><th>ID</th><th>Title</th><th>Priority</th><th>Assigned</th><th>Age</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td class="ticket-id">INC-4821</td><td>Azure VM cluster unreachable</td><td><span class="badge b-danger">P1</span></td><td>Cloud Ops Team</td><td>2h 14m</td><td><span class="ticket-status ts-open">Open</span></td></tr>
+            <tr><td class="ticket-id">INC-4820</td><td>Security alert — Splunk SIEM rule hit</td><td><span class="badge b-danger">P1</span></td><td>Security Team</td><td>3h 41m</td><td><span class="ticket-status ts-progress">In Progress</span></td></tr>
+            <tr><td class="ticket-id">INC-4819</td><td>RHEL patching failure — 12 nodes</td><td><span class="badge b-danger">P1</span></td><td>Linux Team</td><td>4h 02m</td><td><span class="ticket-status ts-progress">In Progress</span></td></tr>
+            <tr><td class="ticket-id">INC-4818</td><td>SolarWinds false alert storm</td><td><span class="badge b-warn">P2</span></td><td>NOC</td><td>5h 30m</td><td><span class="ticket-status ts-review">Under Review</span></td></tr>
+            <tr><td class="ticket-id">INC-4815</td><td>Windows AD replication lag</td><td><span class="badge b-warn">P2</span></td><td>Windows Team</td><td>8h 12m</td><td><span class="ticket-status ts-progress">In Progress</span></td></tr>
+            <tr><td class="ticket-id">INC-4814</td><td>Disk 90% full — DB server</td><td><span class="badge b-warn">P2</span></td><td>Linux Team</td><td>9h 00m</td><td><span class="ticket-status ts-review">Under Review</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-title">MTTR Trend — Last 7 Days</div>
+        <div class="bar-row"><span class="bar-label">Mon</span><div class="bar-track"><div class="bar-fill" style="width:60%;background:var(--ok)"></div></div><span class="bar-val">1.8h</span></div>
+        <div class="bar-row"><span class="bar-label">Tue</span><div class="bar-track"><div class="bar-fill" style="width:80%;background:var(--warning)"></div></div><span class="bar-val">2.4h</span></div>
+        <div class="bar-row"><span class="bar-label">Wed</span><div class="bar-track"><div class="bar-fill" style="width:90%;background:var(--warning)"></div></div><span class="bar-val">2.7h</span></div>
+        <div class="bar-row"><span class="bar-label">Thu</span><div class="bar-track"><div class="bar-fill" style="width:50%;background:var(--ok)"></div></div><span class="bar-val">1.5h</span></div>
+        <div class="bar-row"><span class="bar-label">Fri</span><div class="bar-track"><div class="bar-fill" style="width:75%;background:var(--ok)"></div></div><span class="bar-val">2.2h</span></div>
+      </div>
+    </div>
+
+    <!-- CHANGES -->
+    <div class="page" id="changes">
+      <div class="page-header"><div class="page-title">Change Management</div><div class="page-sub">CAB pipeline · risk assessment · lifecycle</div></div>
+      <div class="kpi-grid">
+        <div class="kpi info"><div class="kpi-label">Pending CAB</div><div class="kpi-value">2</div></div>
+        <div class="kpi warn"><div class="kpi-label">In Progress</div><div class="kpi-value">5</div></div>
+        <div class="kpi ok"><div class="kpi-label">Completed MTD</div><div class="kpi-value">31</div></div>
+        <div class="kpi danger"><div class="kpi-label">Failed / Rolled Back</div><div class="kpi-value">1</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Change Register</div>
+        <table>
+          <thead><tr><th>ID</th><th>Description</th><th>Risk</th><th>Window</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td class="ticket-id">CHG-2201</td><td>Azure VM resize — Prod</td><td><span class="badge b-ok">Low</span></td><td>Apr 24 02:00</td><td><span class="ticket-status ts-closed">Implemented</span></td></tr>
+            <tr><td class="ticket-id">CHG-2200</td><td>SUSE 12 SP5 → SLES 15 migration</td><td><span class="badge b-danger">High</span></td><td>Apr 26 22:00</td><td><span class="ticket-status ts-review">CAB Review</span></td></tr>
+            <tr><td class="ticket-id">CHG-2198</td><td>Meraki firmware — EU stores</td><td><span class="badge b-warn">Medium</span></td><td>Apr 25 00:00</td><td><span class="ticket-status ts-progress">In Progress</span></td></tr>
+            <tr><td class="ticket-id">CHG-2195</td><td>RHEL 7 EOL migration Batch 3</td><td><span class="badge b-warn">Medium</span></td><td>Apr 27 20:00</td><td><span class="ticket-status ts-review">CAB Review</span></td></tr>
+            <tr><td class="ticket-id">CHG-2191</td><td>Tenable scan policy update</td><td><span class="badge b-ok">Low</span></td><td>Apr 23 10:00</td><td><span class="ticket-status ts-closed">Implemented</span></td></tr>
+            <tr><td class="ticket-id">CHG-2188</td><td>Windows WSUS patch — Prod servers</td><td><span class="badge b-warn">Medium</span></td><td>Apr 22 22:00</td><td><span class="ticket-status ts-danger">Failed</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SLA -->
+    <div class="page" id="sla">
+      <div class="page-header"><div class="page-title">SLA Monitoring</div><div class="page-sub">Response & resolution targets by priority</div></div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-title">SLA Compliance — Current Month</div>
+        <div class="sla-rings">
+          <div class="sla-ring"><div class="ring-val" style="color:var(--danger)">78%</div><div class="ring-lbl">P1 Response</div></div>
+          <div class="sla-ring"><div class="ring-val" style="color:var(--ok)">96%</div><div class="ring-lbl">P2 Response</div></div>
+          <div class="sla-ring"><div class="ring-val" style="color:var(--ok)">99%</div><div class="ring-lbl">P3 Response</div></div>
+          <div class="sla-ring"><div class="ring-val" style="color:var(--warning)">88%</div><div class="ring-lbl">P1 Resolution</div></div>
+          <div class="sla-ring"><div class="ring-val" style="color:var(--ok)">94%</div><div class="ring-lbl">P2 Resolution</div></div>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">SLA Breaches — This Month</div>
+          <div class="ticket-row"><span class="ticket-id">INC-4801</span><span class="ticket-title">P1 breach — 4.2h response</span><span class="ticket-status ts-open">Breached</span></div>
+          <div class="ticket-row"><span class="ticket-id">INC-4789</span><span class="ticket-title">P1 breach — 6.1h resolution</span><span class="ticket-status ts-open">Breached</span></div>
+          <div class="ticket-row"><span class="ticket-id">INC-4772</span><span class="ticket-title">P2 breach — 10h resolution</span><span class="ticket-status ts-open">Breached</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">SLA Targets Reference</div>
+          <div class="bar-row"><span class="bar-label">P1 Response</span><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--accent)"></div></div><span class="bar-val">15 min</span></div>
+          <div class="bar-row"><span class="bar-label">P1 Resolution</span><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--accent)"></div></div><span class="bar-val">4 hr</span></div>
+          <div class="bar-row"><span class="bar-label">P2 Response</span><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--accent)"></div></div><span class="bar-val">30 min</span></div>
+          <div class="bar-row"><span class="bar-label">P2 Resolution</span><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--accent)"></div></div><span class="bar-val">8 hr</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROBLEMS -->
+    <div class="page" id="problems">
+      <div class="page-header"><div class="page-title">Problem Management</div><div class="page-sub">RCA · known errors · root cause registry</div></div>
+      <div class="kpi-grid">
+        <div class="kpi warn"><div class="kpi-label">Open Problems</div><div class="kpi-value">7</div></div>
+        <div class="kpi info"><div class="kpi-label">In RCA</div><div class="kpi-value">3</div></div>
+        <div class="kpi ok"><div class="kpi-label">Known Errors</div><div class="kpi-value">12</div></div>
+        <div class="kpi ok"><div class="kpi-label">Closed MTD</div><div class="kpi-value">5</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Problem Register</div>
+        <table>
+          <thead><tr><th>ID</th><th>Description</th><th>Related Incidents</th><th>Stage</th><th>Owner</th></tr></thead>
+          <tbody>
+            <tr><td class="ticket-id">PRB-0091</td><td>Recurring Azure VM NIC drops</td><td>4</td><td><span class="ticket-status ts-progress">RCA In Progress</span></td><td>Cloud Ops</td></tr>
+            <tr><td class="ticket-id">PRB-0089</td><td>SolarWinds false alert patterns</td><td>6</td><td><span class="ticket-status ts-progress">RCA In Progress</span></td><td>NOC</td></tr>
+            <tr><td class="ticket-id">PRB-0085</td><td>WSUS patch failures — Win 2019</td><td>3</td><td><span class="ticket-status ts-review">Known Error</span></td><td>Windows</td></tr>
+            <tr><td class="ticket-id">PRB-0081</td><td>Backup VSS timeouts — heavy load</td><td>5</td><td><span class="ticket-status ts-review">Known Error</span></td><td>Cloud Ops</td></tr>
+            <tr><td class="ticket-id">PRB-0078</td><td>AD lockout source — app service acct</td><td>8</td><td><span class="ticket-status ts-closed">Root Cause ID'd</span></td><td>Security</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- COMPLIANCE -->
+    <div class="page" id="compliance">
+      <div class="page-header"><div class="page-title">Compliance & Audit</div><div class="page-sub">ISO 27001 · SOC 2 · ITIL process maturity</div></div>
+      <div class="kpi-grid">
+        <div class="kpi ok"><div class="kpi-label">ISO 27001</div><div class="kpi-value">91%</div></div>
+        <div class="kpi warn"><div class="kpi-label">SOC 2 Type II</div><div class="kpi-value">84%</div></div>
+        <div class="kpi ok"><div class="kpi-label">Patch Compliance</div><div class="kpi-value">97%</div></div>
+        <div class="kpi warn"><div class="kpi-label">Open Audit Items</div><div class="kpi-value">6</div></div>
+      </div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-title">ITIL Process Maturity</div>
+        <div class="process-grid">
+          <div class="process-card"><h4>Incident Mgmt</h4><p>Well-defined, tooled via ServiceNow</p><div class="process-score" style="color:var(--ok)">4.2 / 5</div></div>
+          <div class="process-card"><h4>Change Mgmt</h4><p>CAB governed, risk-rated pipeline</p><div class="process-score" style="color:var(--ok)">4.0 / 5</div></div>
+          <div class="process-card"><h4>Problem Mgmt</h4><p>RCA process in place, some gaps</p><div class="process-score" style="color:var(--warning)">3.2 / 5</div></div>
+          <div class="process-card"><h4>Config Mgmt</h4><p>CMDB partially populated</p><div class="process-score" style="color:var(--warning)">2.8 / 5</div></div>
+          <div class="process-card"><h4>Release Mgmt</h4><p>Defined, improvement in progress</p><div class="process-score" style="color:var(--warning)">3.5 / 5</div></div>
+          <div class="process-card"><h4>Knowledge Mgmt</h4><p>Articles in ServiceNow, coverage gaps</p><div class="process-score" style="color:var(--danger)">2.4 / 5</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI -->
+    <div class="page" id="ai">
+      <div class="page-header"><div class="page-title">AI Governance Assistant</div><div class="page-sub">Ask anything about ITIL processes, compliance, incidents, SLAs</div></div>
+      <div class="card">
+        <div class="chips">
+          <button class="chip" onclick="qask('What is our current SLA compliance status and where are the gaps?')">SLA status & gaps</button>
+          <button class="chip" onclick="qask('Generate a P1 incident response checklist')">P1 checklist</button>
+          <button class="chip" onclick="qask('What ITIL processes need the most improvement based on our maturity scores?')">Process improvement</button>
+          <button class="chip" onclick="qask('Draft a CAB review summary for CHG-2200')">CAB summary</button>
+          <button class="chip" onclick="qask('What are the top risks in our change pipeline this week?')">Change risks</button>
+        </div>
+        <div class="chat-area">
+          <div class="chat-messages" id="chat-msgs">
+            <div class="chat-msg ai">ITIL Governance AI online. I have context on your incidents, changes, SLAs, problems, and compliance posture. Ask me anything.</div>
+          </div>
+          <div class="chat-row-input">
+            <input type="text" id="ai-inp" placeholder="Ask about governance, process, compliance, or incidents..." onkeydown="if(event.key==='Enter')sendMsg()"/>
+            <button id="ai-btn" onclick="sendMsg()">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+function show(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById(page).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+const hist=[{role:'assistant',content:'ITIL Governance AI online. I have context on your incidents, changes, SLAs, problems, and compliance posture. Ask me anything.'}];
+
+function qask(q){document.getElementById('ai-inp').value=q;sendMsg();}
+
+async function sendMsg(){
+  const inp=document.getElementById('ai-inp');
+  const btn=document.getElementById('ai-btn');
+  const q=inp.value.trim();
+  if(!q)return;
+
+  // Retrieve shared key
+  let GEMINI_KEY = localStorage.getItem('GEMINI_API_KEY') || '';
+  if (!GEMINI_KEY) {
+    GEMINI_KEY = prompt("Enter Gemini API Key:");
+    if (!GEMINI_KEY) return;
+    localStorage.setItem('GEMINI_API_KEY', GEMINI_KEY);
+  }
+
+  inp.value=''; btn.disabled=true;
+  addMsg('user',q);
+  const t=addMsg('ai thinking','Processing via Gemini...');
+
+  const systemContext = `You are an expert ITIL Governance AI for Arvind Prashanth. Context: 3 P1s open, SLA P1 response 78%, Change pipeline has 2 pending CAB (1 High Risk). Maturity: Incident 4.2, Config 2.8. ISO 27001: 91%.`;
+
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: `${systemContext}\n\nUser Question: ${q}` }] }]
+      })
+    });
+    const d = await res.json();
+    const r = d.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from Gemini.';
+    t.remove(); addMsg('ai',r);
+  } catch(e) {
+    t.remove(); addMsg('ai','Connection error: ' + e.message);
+  }
+  btn.disabled=false;
+}
+
+function addMsg(type,text){
+  const c=document.getElementById('chat-msgs');
+  const d=document.createElement('div');
+  d.className='chat-msg '+type;d.textContent=text;
+  c.appendChild(d);c.scrollTop=c.scrollHeight;return d;
+}
+</script>
+</body>
+</html>

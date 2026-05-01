@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AI Ops Runbook — Arvind Prashanth</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#0a0c0f;--surface:#111418;--border:#1e2329;--accent:#c8f04a;--accent2:#4af0c8;--muted:#4a5568;--text:#e2e8f0;--text2:#8892a4;--danger:#f04a4a;--warning:#f0a84a;--ok:#4af04a;--blue:#4a8af0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;overflow-x:hidden}
+.noise{position:fixed;inset:0;opacity:.03;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");pointer-events:none;z-index:999}
+header{padding:1.25rem 2rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.logo{font-family:'Fraunces',serif;font-size:1rem;color:var(--accent)}.logo span{color:var(--text2);font-weight:300;font-style:italic;font-size:.85rem}
+.htabs{display:flex;gap:6px}
+.htab{padding:5px 14px;border-radius:6px;font-size:.68rem;border:1px solid var(--border);cursor:pointer;background:transparent;color:var(--text2);font-family:'DM Mono',monospace;letter-spacing:.04em}
+.htab.on{background:rgba(200,240,74,.1);border-color:var(--accent);color:var(--accent)}
+.pane{display:none}.pane.on{display:block}
+.guide-layout{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;padding:1.5rem}
+.chat-layout{padding:1.5rem}
+.sec-label{font-size:.58rem;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.75rem}
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:1.25rem}
+.cat-btn{padding:.85rem .9rem;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:var(--surface);text-align:left;font-family:'DM Mono',monospace;transition:all .15s}
+.cat-btn:hover{border-color:var(--accent);background:rgba(200,240,74,.05)}
+.cat-btn.sel{border-color:var(--accent);background:rgba(200,240,74,.07)}
+.cat-icon{font-size:1.1rem;margin-bottom:.4rem}
+.cat-name{font-size:.68rem;font-weight:500;color:var(--text);display:block}
+.cat-desc{font-size:.58rem;color:var(--text2);margin-top:.2rem}
+.issue-list{display:grid;gap:4px}
+.iss-btn{padding:.6rem .85rem;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--surface);text-align:left;font-size:.68rem;font-family:'DM Mono',monospace;color:var(--text);display:flex;justify-content:space-between;align-items:center;gap:.5rem;transition:background .15s}
+.iss-btn:hover{background:rgba(255,255,255,.04)}
+.sev{font-size:.58rem;padding:.15rem .5rem;border-radius:3px;font-weight:500;white-space:nowrap}
+.s1{background:rgba(240,74,74,.15);color:var(--danger)}.s2{background:rgba(240,168,74,.15);color:var(--warning)}.s3{background:rgba(74,240,74,.12);color:var(--ok)}
+.back-btn{font-size:.65rem;color:var(--text2);background:none;border:none;cursor:pointer;padding:0;font-family:'DM Mono',monospace;margin-bottom:.85rem;display:inline-flex;align-items:center;gap:.3rem}
+.back-btn:hover{color:var(--text)}
+.playbook{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.pb-head{padding:.85rem 1rem;background:var(--surface);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem}
+.pb-title{font-size:.72rem;font-weight:500;display:flex;align-items:center;gap:.5rem}
+.pb-meta{font-size:.6rem;color:var(--text2)}
+.pb-body{padding:1rem}
+.prog{height:2px;background:var(--border);border-radius:1px;margin-bottom:.85rem;overflow:hidden}
+.prog-fill{height:100%;background:var(--accent);border-radius:1px;transition:width .3s}
+.steps{display:grid;gap:5px;margin-bottom:.85rem}
+.step{display:flex;gap:.65rem;align-items:flex-start;padding:.65rem .8rem;border-radius:6px;border:1px solid var(--border)}
+.step.done{opacity:.5;background:rgba(255,255,255,.02)}
+.step-n{width:18px;height:18px;min-width:18px;border-radius:50%;background:rgba(200,240,74,.15);color:var(--accent);font-size:.6rem;font-weight:500;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.step.done .step-n{background:rgba(74,240,74,.12);color:var(--ok)}
+.step-body{flex:1}
+.step-t{font-size:.68rem;font-weight:500;margin-bottom:.2rem;color:var(--text)}
+.step-d{font-size:.62rem;color:var(--text2);line-height:1.5}
+.step-chk{cursor:pointer;font-size:.65rem;color:var(--muted);background:none;border:none;padding:2px;font-family:'DM Mono',monospace}
+.step-chk:hover{color:var(--text)}
+.pb-actions{display:flex;gap:.5rem;flex-wrap:wrap;padding-top:.75rem;border-top:1px solid var(--border)}
+.pb-btn{padding:5px 12px;border:1px solid var(--border);border-radius:5px;font-size:.62rem;cursor:pointer;background:transparent;color:var(--text);font-family:'DM Mono',monospace}
+.pb-btn:hover{background:rgba(255,255,255,.04)}
+.pb-btn.pri{background:rgba(200,240,74,.1);border-color:rgba(200,240,74,.3);color:var(--accent)}
+.right-panel{border-left:1px solid var(--border);padding-left:1.5rem}
+.right-label{font-size:.58rem;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.6rem}
+.recent-list{display:grid;gap:4px;margin-bottom:1.25rem}
+.recent-item{font-size:.65rem;padding:.45rem .7rem;border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;transition:background .15s;display:flex;justify-content:space-between}
+.recent-item:hover{background:rgba(255,255,255,.03);color:var(--text)}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1.25rem}
+.stat-box{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:.75rem}
+.stat-val{font-family:'Fraunces',serif;font-size:1.4rem;line-height:1}
+.stat-lbl{font-size:.58rem;color:var(--text2);margin-top:.2rem;letter-spacing:.04em}
+.chat-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.25rem;max-width:900px;margin:0 auto}
+.chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.75rem}
+.chip{font-size:.6rem;padding:.25rem .65rem;border:1px solid var(--border);border-radius:99px;cursor:pointer;background:transparent;color:var(--text2);font-family:'DM Mono',monospace}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.chat-msgs{max-height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:.6rem;margin-bottom:.75rem;min-height:120px}
+.msg{padding:.65rem .9rem;border-radius:6px;font-size:.68rem;line-height:1.6;max-width:90%;white-space:pre-wrap}
+.msg.user{align-self:flex-end;background:rgba(200,240,74,.08);border:1px solid rgba(200,240,74,.15);color:var(--text)}
+.msg.ai{align-self:flex-start;background:var(--border);color:var(--text)}
+.msg.thinking{color:var(--text2);font-style:italic}
+.chat-inp-row{display:flex;gap:.5rem}
+.chat-inp-row input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.55rem .85rem;font-size:.68rem;color:var(--text);font-family:'DM Mono',monospace;outline:none}
+.chat-inp-row input:focus{border-color:var(--accent)}
+.chat-inp-row button{padding:.55rem 1rem;background:var(--accent);color:var(--bg);border:none;border-radius:6px;font-size:.65rem;cursor:pointer;font-family:'DM Mono',monospace;font-weight:500}
+.chat-inp-row button:disabled{opacity:.4;cursor:not-allowed}
+@media(max-width:700px){.guide-layout{grid-template-columns:1fr}.right-panel{border-left:none;padding-left:0;border-top:1px solid var(--border);padding-top:1.25rem}.cat-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<header>
+  <div class="logo">AI Ops Runbook <span>// Arvind Prashanth</span></div>
+  <div class="htabs">
+    <button class="htab on" onclick="switchTab('guide')">Guided</button>
+    <button class="htab" onclick="switchTab('chat')">AI Chat</button>
+  </div>
+</header>
+
+<div id="guide" class="pane on">
+  <div class="guide-layout">
+    <div class="left-panel">
+      <div id="g-cats">
+        <div class="sec-label">// select domain</div>
+        <div class="cat-grid">
+          <button class="cat-btn" onclick="selCat('cloud')"><div class="cat-icon">☁</div><span class="cat-name">Cloud & VM</span><div class="cat-desc">Azure · VMware · patching</div></button>
+          <button class="cat-btn" onclick="selCat('linux')"><div class="cat-icon">⬡</div><span class="cat-name">Linux</span><div class="cat-desc">RHEL · Ubuntu · SUSE</div></button>
+          <button class="cat-btn" onclick="selCat('windows')"><div class="cat-icon">▣</div><span class="cat-name">Windows</span><div class="cat-desc">AD · IIS · WSUS · RDS</div></button>
+          <button class="cat-btn" onclick="selCat('network')"><div class="cat-icon">⇄</div><span class="cat-name">Network & NOC</span><div class="cat-desc">Routing · switches · VPN</div></button>
+          <button class="cat-btn" onclick="selCat('security')"><div class="cat-icon">⚿</div><span class="cat-name">Security</span><div class="cat-desc">Alerts · IAM · CVE</div></button>
+          <button class="cat-btn" onclick="selCat('itsm')"><div class="cat-icon">⚙</div><span class="cat-name">ITSM</span><div class="cat-desc">ITIL · RCA · Change</div></button>
+        </div>
+      </div>
+      <div id="g-issues" style="display:none">
+        <button class="back-btn" onclick="goBack('cats')">← domains</button>
+        <div class="sec-label" id="iss-lbl">select issue</div>
+        <div class="issue-list" id="iss-list"></div>
+      </div>
+      <div id="g-playbook" style="display:none">
+        <button class="back-btn" onclick="goBack('issues')">← issues</button>
+        <div id="pb-content"></div>
+      </div>
+    </div>
+    <div class="right-panel">
+      <div class="right-label">// quick stats</div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-val" style="color:var(--danger)">3</div><div class="stat-lbl">P1 Open</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:var(--ok)">94%</div><div class="stat-lbl">SLA</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:var(--warning)">14</div><div class="stat-lbl">Changes</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:var(--accent2)">7</div><div class="stat-lbl">Problems</div></div>
+      </div>
+      <div class="right-label">// recent playbooks</div>
+      <div class="recent-list">
+        <div class="recent-item" onclick="jumpTo('cloud','vm-down')"><span>VM unreachable — Azure</span><span style="color:var(--danger)">P1</span></div>
+        <div class="recent-item" onclick="jumpTo('linux','lx-cpu')"><span>High CPU — Linux</span><span style="color:var(--warning)">P2</span></div>
+        <div class="recent-item" onclick="jumpTo('itsm','p1-incident')"><span>P1 Incident response</span><span style="color:var(--danger)">P1</span></div>
+        <div class="recent-item" onclick="jumpTo('security','intrusion')"><span>Intrusion alert</span><span style="color:var(--danger)">P1</span></div>
+        <div class="recent-item" onclick="jumpTo('windows','win-auth')"><span>AD account lockout</span><span style="color:var(--warning)">P2</span></div>
+        <div class="recent-item" onclick="jumpTo('network','log4j-net')"><span>Log4j CVE remediation</span><span style="color:var(--danger)">P1</span></div>
+      </div>
+      <div class="right-label">// ai quick actions</div>
+      <div style="display:grid;gap:4px">
+        <button class="pb-btn" style="text-align:left;width:100%" onclick="switchTab('chat');qAsk('Generate a P1 escalation email template for an Azure VM outage')">Draft P1 escalation email ↗</button>
+        <button class="pb-btn" style="text-align:left;width:100%" onclick="switchTab('chat');qAsk('Give me a 5-Why RCA template for a recurring Linux disk full incident')">RCA 5-Why template ↗</button>
+        <button class="pb-btn" style="text-align:left;width:100%" onclick="switchTab('chat');qAsk('What are the key checks before approving a high-risk CAB change?')">CAB checklist ↗</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="chat" class="pane">
+  <div class="chat-layout">
+    <div class="chat-box">
+      <div class="chips">
+        <button class="chip" onclick="qAsk('How do I troubleshoot high CPU on a Linux server?')">High CPU — Linux</button>
+        <button class="chip" onclick="qAsk('Windows service not starting — step by step')">Windows service failure</button>
+        <button class="chip" onclick="qAsk('P1 incident response process — full runbook')">P1 response</button>
+        <button class="chip" onclick="qAsk('Disk full on Linux — investigation steps')">Disk full</button>
+        <button class="chip" onclick="qAsk('AD account lockout — find the source')">AD lockout</button>
+        <button class="chip" onclick="qAsk('Security intrusion on Windows server — containment steps')">Intrusion — Windows</button>
+        <button class="chip" onclick="qAsk('Backup job failed — Azure Backup investigation')">Backup failure</button>
+        <button class="chip" onclick="qAsk('Zero-downtime OS patching on Azure VMs — approach')">Zero-downtime patching</button>
+        <button class="chip" onclick="qAsk('Generate a professional P1 escalation email')">P1 escalation email</button>
+        <button class="chip" onclick="qAsk('5-Why RCA template for a network outage')">RCA template</button>
+      </div>
+      <div class="chat-msgs" id="chat-msgs">
+        <div class="msg ai">Ops AI online. Deep expertise: Azure · VMware · Linux · Windows · Network · ITSM · Security. Ask for runbooks, commands, templates, or escalation drafts.</div>
+      </div>
+      <div class="chat-inp-row">
+        <input type="text" id="chat-inp" placeholder="Ask for a runbook, command, RCA template, or escalation email..." onkeydown="if(event.key==='Enter')sendChat()"/>
+        <button id="chat-btn" onclick="sendChat()">Run</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PB={
+  cloud:{label:"Cloud & VM",issues:[
+    {id:"vm-down",title:"VM unreachable / not responding",sev:"P1",steps:[
+      {t:"Check VM power state",d:"Azure Portal or vCenter — confirm powered on. If off, start VM and monitor boot logs for errors."},
+      {t:"Verify network connectivity",d:"Ping private IP from jumpbox in same VNet/subnet. If unreachable, check NSG rules and route tables."},
+      {t:"Review Azure Activity Log",d:"Check for recent stop/deallocate events, auto-shutdown policies, or platform health events."},
+      {t:"Inspect boot diagnostics",d:"Enable boot diagnostics. Review serial console output for kernel panics, disk errors, or failed services."},
+      {t:"Attempt serial console access",d:"Azure Serial Console — access VM without network dependency. Check running services and system logs."},
+      {t:"Escalate",d:"Raise P1 ticket. Engage Tier 3 / Azure support with VM resource ID, subscription ID, and diagnostics."}
+    ]},
+    {id:"high-res",title:"High CPU / memory / disk on VM",sev:"P2",steps:[
+      {t:"Check Azure Monitor metrics",d:"CPU %, memory %, disk IOPS in Azure Monitor. Use top/htop (Linux) or Task Manager (Windows) inside the VM."},
+      {t:"Isolate top process",d:"Linux: ps aux --sort=-%cpu | head -20. Windows: Get-Process | Sort-Object CPU -Descending | Select -First 15"},
+      {t:"Review application logs",d:"Check app and system logs for errors — runaway loops, memory leaks, connection pool exhaustion."},
+      {t:"Assess VM sizing",d:"Compare usage to VM SKU limits. If consistently above 80%, raise a resize change request."},
+      {t:"Mitigate",d:"Restart offending service if safe. Notify application owner. Set CPU/memory limits where applicable."},
+      {t:"Document",d:"Log in incident ticket. If recurring, raise problem record and schedule capacity review with client."}
+    ]},
+    {id:"patch-cloud",title:"OS patching without downtime",sev:"P2",steps:[
+      {t:"Pre-patch snapshot",d:"Azure snapshot before patching. Verify completion. Note snapshot ID in change record."},
+      {t:"Raise and approve change",d:"ServiceNow normal change — patch manifest (Tenable/Qualys), window, rollback plan, CAB approvers."},
+      {t:"Use Azure Update Manager",d:"Hot-patching for Windows Server 2022 Datacenter Azure Edition. Linux: live kernel patching (kpatch/ksplice) where available."},
+      {t:"Rolling update for clusters",d:"Drain one node, patch, reboot, validate, repeat. Never patch all nodes simultaneously."},
+      {t:"Post-patch validation",d:"Verify services running. Connectivity and app health checks. Confirm with application owner."},
+      {t:"Update CMDB and close",d:"Mark completed in ServiceNow. Update CMDB patch level. Archive log for ISO/SOC audit."}
+    ]},
+    {id:"backup-cloud",title:"Backup failure / restore test",sev:"P2",steps:[
+      {t:"Identify failed job",d:"Azure Backup / Veeam dashboard — note error code, affected VM, timestamp."},
+      {t:"Review job logs",d:"Root cause: agent offline, storage full, VSS snapshot failure, or network timeout."},
+      {t:"Retry if transient",d:"Retry manually. Monitor for successful completion before closing."},
+      {t:"Resolve persistent failures",d:"Agent offline: restart agent. Storage full: extend vault. VSS: restart VSS service and writers."},
+      {t:"Restore test",d:"Restore to staging. Verify data integrity. Document restore time vs RPO/RTO targets."},
+      {t:"Escalate if SLA at risk",d:"If failing more than one cycle and RPO at risk, raise P2. Notify client immediately."}
+    ]}
+  ]},
+  linux:{label:"Linux Servers",issues:[
+    {id:"lx-down",title:"Server down / unresponsive",sev:"P1",steps:[
+      {t:"SSH and ping",d:"Try SSH from jumpbox. Ping IP. Both fail = network/OS issue. Ping OK, SSH fail = check sshd and firewall."},
+      {t:"Out-of-band access",d:"IPMI / HP iLO / DELL iDRAC or Azure Serial Console. Review console for kernel panics or fsck errors."},
+      {t:"Review system logs",d:"journalctl -xe (systemd) or /var/log/messages, /var/log/syslog. Look for OOM, kernel panic, storage errors."},
+      {t:"Attempt restart",d:"Partial response: systemctl reboot. Hung: hard reboot via iLO/iDRAC or Azure Portal. Document action."},
+      {t:"Post-reboot validation",d:"systemctl list-units --state=failed. Check df -h, mount. Verify network interfaces up."},
+      {t:"Escalate",d:"If no recovery, escalate to Tier 3. Preserve console logs and iLO/iDRAC event logs for RCA."}
+    ]},
+    {id:"lx-cpu",title:"High CPU / memory",sev:"P2",steps:[
+      {t:"Identify top consumers",d:"top / htop — sort by %CPU and %MEM. ps aux --sort=-%cpu | head -20 for snapshot."},
+      {t:"Investigate process",d:"lsof -p <PID> for open files. strace -p <PID> for system calls. Legitimate or runaway?"},
+      {t:"Check memory",d:"free -h for overall. vmstat 1 10 for pressure. High swap + low free RAM = memory starvation."},
+      {t:"Check app logs",d:"App logs for errors, crash loops, connection pool issues. Common: cron jobs, log rotation, backup agents."},
+      {t:"Mitigate",d:"systemctl restart <service> if safe. kill -15 <PID> first (graceful), then kill -9 <PID> if needed."},
+      {t:"Permanent fix",d:"Profile application. Review cron schedules for overlap. Raise capacity review if VM undersized."}
+    ]},
+    {id:"lx-disk",title:"Disk full / storage issue",sev:"P2",steps:[
+      {t:"Confirm usage",d:"df -h for filesystem. df -i for inode exhaustion. Both can cause 'disk full' symptoms."},
+      {t:"Find large files",d:"du -sh /* 2>/dev/null | sort -rh | head -20. Common: /var/log, /tmp, /var/crash, old kernels."},
+      {t:"Safe cleanup",d:"Truncate logs: > /var/log/large.log. Remove old kernels: package-cleanup --oldkernels (RHEL) or apt autoremove (Ubuntu)."},
+      {t:"Extend volume",d:"lvextend -L +20G /dev/vg/lv_root then resize2fs (ext4) or xfs_growfs (xfs). Verify with df -h."},
+      {t:"Fix inode exhaustion",d:"find / -xdev -printf '%h\\n' | sort | uniq -c | sort -rn | head — find dirs with many small files. Clean or archive."},
+      {t:"Update monitoring",d:"Set SolarWinds / Nagios thresholds at 80% for early warning."}
+    ]},
+    {id:"lx-auth",title:"Authentication / SSH issues",sev:"P2",steps:[
+      {t:"Test SSH verbosely",d:"ssh -v user@host — verbose output identifies failure point: DNS, key exchange, or auth."},
+      {t:"Check sshd",d:"systemctl status sshd. /var/log/secure (RHEL) or /var/log/auth.log (Ubuntu) for auth failures."},
+      {t:"Verify key permissions",d:"chmod 600 ~/.ssh/authorized_keys and chmod 700 ~/.ssh. Wrong permissions silently break key auth."},
+      {t:"Check account status",d:"passwd -S <username> — L status = locked. usermod -U <username> to unlock. Check /etc/shadow for expiry."},
+      {t:"Check firewall",d:"firewall-cmd --list-all (RHEL) or ufw status (Ubuntu). Port 22 allowed from source IP? Check NSG in Azure."},
+      {t:"PAM and sudo",d:"/etc/pam.d/sshd for misconfigurations. id <username> for group membership. /etc/sudoers for sudo access."}
+    ]},
+    {id:"lx-perf",title:"Performance bottleneck",sev:"P2",steps:[
+      {t:"CPU / memory / I/O together",d:"vmstat 1 10 — high wa (wait) = disk I/O bottleneck, not CPU. Don't chase CPU if wa is high."},
+      {t:"I/O bottleneck",d:"iostat -xz 1 10 — %util above 80% sustained = bottleneck. iotop for per-process I/O."},
+      {t:"Network throughput",d:"sar -n DEV 1 5 or nload / iftop. Unexpected high outbound = possible exfiltration or sync issue."},
+      {t:"Load vs CPU count",d:"uptime — compare load average to nproc. Load > CPU count = run queue saturated."},
+      {t:"Profile",d:"perf top or strace -c -p <PID> for syscall hotspots. Check DB slow query logs if app is DB-backed."},
+      {t:"Tune",d:"I/O scheduler, /etc/sysctl.conf kernel params, thread pool sizing. Document all changes."}
+    ]},
+    {id:"lx-log",title:"Log review / recurring errors",sev:"P3",steps:[
+      {t:"Identify log sources",d:"/var/log/messages, /var/log/syslog, /var/log/secure, journalctl. App logs in /var/log/<app> or /opt/<app>/logs."},
+      {t:"Search for patterns",d:"grep -i 'error|failed|critical' /var/log/messages | tail -100. journalctl -p err --since '24 hours ago'. | sort | uniq -c | sort -rn"},
+      {t:"Correlate with events",d:"Map timestamps to deployments, cron, backups, logins. Use last and who for login correlation."},
+      {t:"Identify root pattern",d:"Periodic errors = check cron (crontab -l, /etc/cron.*). Service-aligned = isolate that service."},
+      {t:"Resolve or suppress",d:"Fix the root cause. Known benign warning: add rsyslog / Splunk filter to suppress alert fatigue."},
+      {t:"Document",d:"ServiceNow knowledge article: error pattern, root cause, fix. Saves repeat investigation time."}
+    ]}
+  ]},
+  windows:{label:"Windows Servers",issues:[
+    {id:"win-down",title:"Server down / unreachable",sev:"P1",steps:[
+      {t:"RDP and ping",d:"Try RDP from jumpbox. Ping IP. Ping fail = network/power. Ping OK, RDP fail = check Windows Firewall and RDP service."},
+      {t:"Out-of-band",d:"HP iLO / DELL iDRAC / Azure Serial Console. Review BSOD stop code or console error if server is hung."},
+      {t:"Remote Event Viewer",d:"Get-WinEvent -ComputerName <host> -LogName System -MaxEvents 50 | Where-Object LevelDisplayName -eq 'Error'"},
+      {t:"Graceful restart",d:"iLO/iDRAC or Azure Portal restart. If hung: hard reset. Monitor boot sequence via console."},
+      {t:"Post-reboot validation",d:"Get-Service | Where-Object Status -ne Running. Get-NetAdapter. Confirm application accessible."},
+      {t:"Collect and escalate",d:"Preserve C:\\Windows\\Minidump if BSOD. Collect System and Application event logs. Escalate to Tier 3."}
+    ]},
+    {id:"win-svc",title:"Critical Windows service failure",sev:"P1",steps:[
+      {t:"Check service status",d:"Get-Service <n>. Event Viewer > Application + System logs for error 7000/7034 (service crash)."},
+      {t:"Attempt restart",d:"Restart-Service <n> or net start <service>. Fails immediately = deeper issue. Review error code in Event Viewer."},
+      {t:"Check dependencies",d:"Services console > Properties > Dependencies. All upstream dependencies running?"},
+      {t:"Review service account",d:"Password not expired? Account not locked? 'Log on as a service' right in Local Security Policy? Reset via CyberArk."},
+      {t:"App event logs",d:"Event Viewer > Application filtered by service event source. Config errors, DLL failures, licence issues."},
+      {t:"Escalate",d:"wevtutil epl to export logs. Share with Tier 3. Open ticket with event IDs, service name, server details."}
+    ]},
+    {id:"win-auth",title:"Account lockout / authentication",sev:"P2",steps:[
+      {t:"Find locked accounts",d:"Search-ADAccount -LockedOut | Select Name, LockedOut, LastLogonDate"},
+      {t:"Find lockout source",d:"Event ID 4740 on PDC emulator Security log. 'Caller Computer Name' = source machine."},
+      {t:"Investigate source",d:"Stale credentials on source: mapped drives, scheduled tasks, services, cached RDP sessions with old password."},
+      {t:"Unlock account",d:"Unlock-ADAccount -Identity <username>. Reset if expired: Set-ADAccountPassword. Confirm active."},
+      {t:"Check PSO",d:"Get-ADUserResultantPasswordPolicy <username>. Adjust lockout threshold if automation is triggering it."},
+      {t:"Alert and document",d:"Splunk / SIEM alert on Event ID 4740. Document root cause and resolution in incident ticket."}
+    ]},
+    {id:"win-patch",title:"Windows patch management",sev:"P2",steps:[
+      {t:"Review pending updates",d:"WSUS console or Azure Update Manager. Confirm patch classification — prioritise Critical and Security."},
+      {t:"Raise change",d:"ServiceNow normal change — KB list, affected servers, window, rollback plan (snapshot), CAB chain."},
+      {t:"Pre-patch snapshot",d:"VM snapshot or Azure Backup restore point. Verify completed. Note ID in change record."},
+      {t:"Phased rollout",d:"Dev > UAT > Prod. 24-48h between rings. WSUS groups or Azure Update Manager deployment rings."},
+      {t:"Post-patch validation",d:"Services running, no new Event Viewer errors, app accessible. Application owner sign-off."},
+      {t:"Close",d:"KB numbers and dates in CMDB. Mark completed in ServiceNow. Archive Windows Update log for audit."}
+    ]},
+    {id:"win-hw",title:"Hardware fault — drive / memory / power",sev:"P1",steps:[
+      {t:"iLO / iDRAC health",d:"HP iLO or DELL iDRAC System Health dashboard — drive, memory, power supply fault indicators."},
+      {t:"Event Viewer",d:"System log — Event IDs: 11 (disk error), 15 (device not ready), 51 (paging error), 1001 (memory parity)."},
+      {t:"Memory diagnostic",d:"mdsched.exe — reboot to run. Results in Event Viewer > System (source: MemoryDiagnostics-Results)."},
+      {t:"SMART / disk health",d:"Get-PhysicalDisk | Get-StorageReliabilityCounter. Reallocated Sectors > 0 = imminent failure."},
+      {t:"Engage vendor",d:"Raise support case (HP, Dell, Lenovo). Provide iLO/iDRAC IML log and hardware serial number."},
+      {t:"Protect data",d:"Imminent failure: snapshot immediately. Migrate workload to another host if in VMware cluster. Do not delay."}
+    ]}
+  ]},
+  network:{label:"Network & NOC",issues:[
+    {id:"site-down",title:"Store / site connectivity loss",sev:"P1",steps:[
+      {t:"Confirm scope",d:"SolarWinds / Nagios — single site or multiple? Circuit type: MPLS, leased line, DSL, SD-WAN. WAN or LAN?"},
+      {t:"ISP status",d:"Contact last-mile provider via NOC hotline. Known outage or maintenance in progress?"},
+      {t:"Edge device",d:"SSH to site router or Meraki Dashboard. Interface status, BGP/OSPF neighbour state, syslog."},
+      {t:"Tunnel and routing",d:"VPN tunnel status (IPsec/GRE). Correct default route in routing table? ACLs blocking traffic?"},
+      {t:"Failover",d:"SD-WAN: trigger failover to secondary WAN. Confirm traffic via backup path. Notify client."},
+      {t:"ISP escalation",d:"Unresolved within SLA: escalate to ISP account team. Open bridge call. Document all ISP ticket numbers."}
+    ]},
+    {id:"nic-routing",title:"NIC or routing issue on server",sev:"P2",steps:[
+      {t:"NIC status",d:"Linux: ip link show — UP? ethtool eth0 for speed/duplex. Windows: Get-NetAdapter — Status Up, LinkSpeed correct?"},
+      {t:"IP config",d:"Linux: ip addr show. Windows: ipconfig /all. Correct IP, mask, gateway? Duplicate IP: arping -D <IP>"},
+      {t:"Gateway reachability",d:"Ping default gateway. Fail but NIC up = local network issue (VLAN, switch port, cable). Check switch via NOC."},
+      {t:"Routing table",d:"Linux: ip route show. Windows: route print. Default route present, correct gateway?"},
+      {t:"Firewall and NSG",d:"Linux: firewall-cmd --list-all. Windows: Get-NetFirewallRule. Azure NSG for VM subnet and NIC."},
+      {t:"Escalate",d:"Switch/VLAN level: engage Tier 2/3 network team with port number, VLAN ID, MAC address."}
+    ]},
+    {id:"log4j-net",title:"Log4j / critical CVE remediation",sev:"P1",steps:[
+      {t:"Scope",d:"Tenable / Qualys affected device list. Cross-reference SolarWinds inventory. Confirm impacted firmware versions."},
+      {t:"Prioritise",d:"Internet-facing: P1. Internal-only: P2. Create tracked remediation register."},
+      {t:"Get patches",d:"Download vendor patches. Verify checksums. Review advisory for side-effects."},
+      {t:"Test in staging",d:"Apply to non-production device. Verify routing, VPN, management access. Document outcome."},
+      {t:"Bulk remediation",d:"Maintenance window batches. Automation scripts where possible."},
+      {t:"Validate compliance",d:"Re-run Tenable / Qualys. Zero findings confirmed. Export compliance report for audit."}
+    ]}
+  ]},
+  security:{label:"Security & Access",issues:[
+    {id:"intrusion",title:"Security alert / intrusion attempt",sev:"P1",steps:[
+      {t:"Triage alert",d:"Splunk / Azure Sentinel — source IP, destination, attack type, confidence. True positive or false positive?"},
+      {t:"Isolate system",d:"True positive: remove VM from NSG/VNet or apply emergency deny-all NSG rule. Preserve state for forensics."},
+      {t:"Collect forensics",d:"Memory dump, running processes, netstat -anp, auth logs. Do NOT power off — memory evidence lost."},
+      {t:"Block threat",d:"Block attacker IP at perimeter firewall / NSG / WAF. Check lateral movement on adjacent servers."},
+      {t:"Notify",d:"Security team and management immediately. Data breach suspected: follow IRP, notify compliance/legal."},
+      {t:"Remediate",d:"Re-image or restore from clean snapshot. Patch exploited vulnerability. Reset all credentials. Full RCA."}
+    ]},
+    {id:"malware",title:"Malware detection",sev:"P1",steps:[
+      {t:"Confirm detection",d:"CrowdStrike / Defender / Qualys — malware name, file path, detection confidence. Auto-quarantined?"},
+      {t:"Isolate host",d:"Disable NIC or emergency deny-all NSG. Prevent lateral spread before investigating."},
+      {t:"Scope",d:"SIEM — same IOC (file hash, IP, registry key) on other servers. Isolated or campaign?"},
+      {t:"Contain",d:"Quarantined: delete via AV console. Not quarantined: manually delete file, kill process. Document everything."},
+      {t:"Infection vector",d:"Recent downloads, email attachments, RDP logins, USB. Security event log for unusual account activity."},
+      {t:"Remediate",d:"Integrity in doubt: re-image from clean snapshot. Reset all credentials. Patch exploited vector. RCA."}
+    ]},
+    {id:"iam",title:"User access / permissions",sev:"P3",steps:[
+      {t:"Confirm request",d:"Verify against approved access matrix (RACI / access register). Business justification confirmed?"},
+      {t:"Check current access",d:"SailPoint / PRIMA or AD: Get-ADGroupMember <group>. Current vs required access delta."},
+      {t:"Grant access",d:"ServiceNow access request. Approver sign-off per RACI. Provision via SailPoint or manually in AD/Azure AD."},
+      {t:"CyberArk privileged",d:"Create/update CyberArk safe. Onboard to CPM for auto-rotation. Log in access register."},
+      {t:"Verify",d:"Confirm user can log in and access resources. Test from user perspective — don't assume success."},
+      {t:"Audit",d:"Update access register: entitlement, approver, date. Schedule quarterly review per ISO/SOC."}
+    ]},
+    {id:"vuln",title:"Vulnerability remediation",sev:"P2",steps:[
+      {t:"Review scan",d:"Tenable / Qualys — filter Critical and High first. CVE details, affected assets, exploitability scores."},
+      {t:"Prioritise",d:"Severity × exploitability × criticality. Internet-facing critical CVEs = immediate. Internal medium = next window."},
+      {t:"Raise changes",d:"ServiceNow change per remediation batch. Affected assets, patch/mitigation, test plan, rollback plan."},
+      {t:"Apply",d:"Vendor patches where available. No patch: WAF rules, ACL restrictions, service disablement as compensating controls."},
+      {t:"Re-scan",d:"Targeted re-scan on remediated assets. Zero findings confirmed. Export closure evidence for audit."},
+      {t:"Report",d:"Remediation status report: total findings, closed, in-progress, accepted risk. Monthly service review."}
+    ]}
+  ]},
+  itsm:{label:"ITSM",issues:[
+    {id:"p1-incident",title:"P1 incident response",sev:"P1",steps:[
+      {t:"Declare P1 + bridge call",d:"Open P1 in ServiceNow. Bridge call: cloud/network SMEs, client contacts, management per escalation matrix."},
+      {t:"Assign incident commander",d:"IC owns communications, drives actions, prevents silos. All updates through IC only."},
+      {t:"15-min assessment",d:"Blast radius: what affected, how many users/sites, business impact. Document every 15 minutes."},
+      {t:"Parallel workstreams",d:"Investigate (root cause) AND mitigate (restore service) simultaneously. Don't wait for RCA."},
+      {t:"Restore service",d:"Fastest viable fix — failover, rollback, restart, or workaround. Confirm with client. Update to 'Service Restored'."},
+      {t:"PIR within 24-48h",d:"Complete RCA: timeline, root cause, contributing factors, corrective actions, owners. Submit PAR to client."}
+    ]},
+    {id:"rca",title:"Root cause analysis (RCA)",sev:"P2",steps:[
+      {t:"Build timeline",d:"Minute-by-minute from alerts, logs, tickets, bridge notes. Identify exact time of first impact."},
+      {t:"5-Whys",d:"Start with symptom, ask 'Why?' five times. Reach systemic root cause, not surface symptom."},
+      {t:"Contributing factors",d:"Monitoring gaps, missing runbooks, process failures, configuration drift — all factors that enabled the incident."},
+      {t:"Corrective actions",d:"Owner, due date, priority per factor. RACI matrix for accountability assignment."},
+      {t:"Peer review",d:"Team review for accuracy before sharing with client. Technical details correct."},
+      {t:"Submit PAR + track",d:"PAR to client within agreed SLA. Track all actions in ServiceNow to confirmed closure."}
+    ]},
+    {id:"change-mgmt",title:"Normal change management",sev:"P3",steps:[
+      {t:"Raise change",d:"ServiceNow: description, scope, risk assessment, implementation plan, rollback plan, test plan."},
+      {t:"CAB review",d:"Submit 5 business days before window. Present, answer queries, obtain approval."},
+      {t:"Pre-change comms",d:"48h notice to all affected stakeholders. Window details, expected downtime, contact numbers."},
+      {t:"Implement",d:"Execute per approved plan. Change lead assigned. Document each step in ticket as completed."},
+      {t:"Validate",d:"All test cases executed. Service normal. Application owner sign-off before closing window."},
+      {t:"Close",d:"ServiceNow outcome update. If failed: confirm rollback executed. Lessons learned. Archive for audit."}
+    ]},
+    {id:"backup-itsm",title:"Backup failure",sev:"P2",steps:[
+      {t:"Identify job",d:"Azure Backup / Veeam dashboard — error code, affected asset, timestamp."},
+      {t:"Review logs",d:"Agent offline, storage full, VSS failure, or network timeout — common root causes."},
+      {t:"Retry if transient",d:"Retry manually. Monitor for successful completion before closing."},
+      {t:"Persistent fix",d:"Agent offline: restart agent. Storage full: extend vault. VSS: vssadmin list writers, restart failed writers."},
+      {t:"Restore test",d:"Restore to staging. Verify integrity. Document time vs RPO/RTO targets."},
+      {t:"Escalate",d:"Failing multiple cycles and RPO at risk: raise P2. Notify client immediately."}
+    ]}
+  ]}
+};
+
+let curCat=null,curIssue=null,checked={};
+
+function switchTab(t){
+  document.querySelectorAll('.htab').forEach((b,i)=>b.classList.toggle('on',['guide','chat'][i]===t));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+  document.getElementById(t).classList.add('on');
+}
+
+function selCat(cat){
+  curCat=cat;checked={};
+  document.getElementById('g-cats').style.display='none';
+  document.getElementById('g-issues').style.display='block';
+  document.getElementById('g-playbook').style.display='none';
+  const d=PB[cat];
+  document.getElementById('iss-lbl').textContent='// '+d.label.toLowerCase()+' — select issue';
+  document.getElementById('iss-list').innerHTML=d.issues.map(i=>`
+    <button class="iss-btn" onclick="selIssue('${i.id}')">
+      <span>${i.title}</span><span class="sev s${i.sev.replace('P','')}">${i.sev}</span>
+    </button>`).join('');
+}
+
+function selIssue(id){
+  curIssue=id;checked={};
+  document.getElementById('g-issues').style.display='none';
+  document.getElementById('g-playbook').style.display='block';
+  renderPB();
+}
+
+function renderPB(){
+  const issue=PB[curCat].issues.find(i=>i.id===curIssue);
+  const done=issue.steps.filter((_,i)=>checked[i]).length;
+  const pct=Math.round((done/issue.steps.length)*100);
+  const sc=`s${issue.sev.replace('P','')}`;
+  document.getElementById('pb-content').innerHTML=`
+    <div class="playbook">
+      <div class="pb-head">
+        <div class="pb-title">${issue.title}<span class="sev ${sc}" style="margin-left:.4rem">${issue.sev}</span></div>
+        <div class="pb-meta">${done}/${issue.steps.length} · ${pct}%</div>
+      </div>
+      <div class="pb-body">
+        <div class="prog"><div class="prog-fill" style="width:${pct}%"></div></div>
+        <div class="steps">${issue.steps.map((s,i)=>`
+          <div class="step${checked[i]?' done':''}">
+            <div class="step-n">${checked[i]?'✓':(i+1)}</div>
+            <div class="step-body">
+              <div class="step-t">${s.t}</div>
+              <div class="step-d">${s.d}</div>
+            </div>
+            <button class="step-chk" onclick="tog(${i})">${checked[i]?'↩':'✓'}</button>
+          </div>`).join('')}
+        </div>
+        <div class="pb-actions">
+          <button class="pb-btn pri" onclick="switchTab('chat');qAsk('I am working the runbook for \\'${issue.title}\\'. What are the most common failure points and what should I watch out for?')">Ask AI ↗</button>
+          <button class="pb-btn pri" onclick="generateAutoScript()">Generate Remediation Script ↗</button>
+          <button class="pb-btn" onclick="switchTab('chat');qAsk('Generate a professional escalation email for a \\'${issue.title}\\' incident with key details and stakeholder communication guidance.')">Escalation email ↗</button>
+          <button class="pb-btn" onclick="checked={};renderPB()">Reset</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function tog(i){checked[i]=!checked[i];renderPB();}
+
+function goBack(to){
+  ['g-cats','g-issues','g-playbook'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById(to==='cats'?'g-cats':'g-issues').style.display='block';
+}
+
+function jumpTo(cat,id){selCat(cat);selIssue(id);}
+
+const hist=[{role:'assistant',content:'Ops AI online. Deep expertise: Azure · VMware · Linux · Windows · Network · ITSM · Security. Ask for runbooks, commands, templates, or escalation drafts.'}];
+
+function qAsk(q){document.getElementById('chat-inp').value=q;sendChat();}
+
+async function sendChat(){
+  const inp=document.getElementById('chat-inp');
+  const btn=document.getElementById('chat-btn');
+  const q=inp.value.trim();
+  if(!q)return;
+
+  let GEMINI_KEY = localStorage.getItem('GEMINI_API_KEY') || '';
+  if (!GEMINI_KEY) {
+    GEMINI_KEY = prompt("Enter Gemini API Key:");
+    if (!GEMINI_KEY) return;
+    localStorage.setItem('GEMINI_API_KEY', GEMINI_KEY);
+  }
+
+  inp.value=''; btn.disabled=true;
+  addMsg('user',q);
+  const t=addMsg('ai thinking','Gemini is generating runbook...');
+
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: `System: Expert Ops Assistant for Arvind Prashanth (19+ yrs exp). Focus: Azure, VMware, Linux, Windows, Cisco. Provide shell commands/PowerShell. User: ${q}` }] }]
+      })
+    });
+    const d = await res.json();
+    const r = d.candidates?.[0]?.content?.parts?.[0]?.text || 'No response.';
+    t.remove(); addMsg('ai',r);
+  } catch(e) {
+    t.remove(); addMsg('ai','Error: ' + e.message);
+  }
+  btn.disabled=false;
+}
+
+function addMsg(type,text){
+  const c=document.getElementById('chat-msgs');
+  const d=document.createElement('div');
+  d.className='msg '+type;d.textContent=text;
+  c.appendChild(d);c.scrollTop=c.scrollHeight;return d;
+}
+
+async function generateAutoScript() {
+  // Get the currently selected issue title from the PB object
+  const issue = PB[curCat].issues.find(i => i.id === curIssue);
+  const q = `Generate a production-ready, safe PowerShell or Bash script to resolve the issue: '${issue.title}'. Include error handling, logging, and safety checks. Output ONLY the code block.`;
+
+  // Switch to chat tab and send the request automatically
+  switchTab('chat');
+  document.getElementById('chat-inp').value = q;
+  sendChat();
+}
+
+</script>
+</body>
+</html>

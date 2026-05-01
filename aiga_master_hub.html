@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIGA — Unified Governance Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0c0f; --surface: #111418; --border: #1e2329;
+            --accent: #c8f04a; --text: #e2e8f0; --text2: #8892a4;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Navigation Sidebar */
+        nav { width: 240px; border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 1.5rem 0; }
+        .nav-header { padding: 0 1.5rem 2rem; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+        .logo { font-family: 'Fraunces', serif; color: var(--accent); font-size: 1.2rem; }
+        .nav-item { padding: 0.8rem 1.5rem; font-size: 0.75rem; color: var(--text2); cursor: pointer; transition: 0.2s; border-left: 3px solid transparent; }
+        .nav-item:hover, .nav-item.active { color: var(--text); background: rgba(200, 240, 74, 0.05); border-left-color: var(--accent); }
+        
+        /* Main Content Area */
+        main { flex: 1; height: 100vh; position: relative; }
+        iframe { width: 100%; height: 100%; border: none; display: none; }
+        iframe.active { display: block; }
+
+        /* Shared Global Key Bar */
+        .key-bar { position: absolute; bottom: 0; width: 100%; background: var(--surface); border-top: 1px solid var(--border); padding: 0.5rem 1rem; font-size: 0.6rem; display: flex; justify-content: space-between; align-items: center; }
+        .key-status { color: var(--accent); }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-header">
+        <div class="logo">AIGA PORTAL</div>
+        <div style="font-size: 0.6rem; color: var(--text2); margin-top: 4px;">Unified Ops & Governance</div>
+    </div>
+    <div class="nav-item active" onclick="loadModule('dashboard', 'itil_governance_hub.html')">Governance Hub</div>
+    <div class="nav-item" onclick="loadModule('predictor', 'SLA_breach_predictor.html')">SLA Predictor</div>
+    <div class="nav-item" onclick="loadModule('runbook', 'ops_runbook.html')">AI Ops Runbook</div>
+    <div class="nav-item" onclick="loadModule('exec', 'stakeholder_executive_view.html')">Executive View</div>
+    <div class="nav-item" onclick="window.location.href='index.html'">View Portfolio</div>
+</nav>
+
+<main id="view-container">
+    <iframe id="dashboard" class="active" src="itil_governance_hub.html"></iframe>
+    <iframe id="predictor" src="SLA_breach_predictor.html"></iframe>
+    <iframe id="runbook" src="ops_runbook.html"></iframe>
+    <iframe id="exec" src="stakeholder_executive_view.html"></iframe>
+    
+    <div class="key-bar">
+        <span>AIGA Agent Status: <span class="key-status">Connected</span></span>
+        <button onclick="updateKey()" style="background:none; border:none; color:var(--text2); cursor:pointer;">Update Gemini Key</button>
+    </div>
+</main>
+
+<script>
+    function loadModule(id, src) {
+        // Switch Active Nav
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+
+        // Switch Active Iframe
+        document.querySelectorAll('iframe').forEach(el => el.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function updateKey() {
+        const key = prompt("Enter your Gemini API Key (Shared across all modules):");
+        if (key) {
+            localStorage.setItem('GEMINI_API_KEY', key);
+            location.reload(); // Refresh to inject key into all modules
+        }
+    }
+
+    // Initial Security Check
+    window.onload = () => {
+        if (!localStorage.getItem('GEMINI_API_KEY')) {
+            updateKey();
+        }
+    };
+</script>
+</body>
+</html>
